@@ -149,7 +149,7 @@ function getType()
     if findItem("Soul Guitar") then
         table.insert(ReturnText, "SG")
     end
-    if findItem("Leviathan") then
+    if findItem("Leviathan Heart") then
         table.insert(ReturnText, "Heart")
     end
 
