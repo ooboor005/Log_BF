@@ -149,6 +149,10 @@ function getType()
     if findItem("Soul Guitar") then
         table.insert(ReturnText, "SG")
     end
+    if findItem("Leviathan") then
+        table.insert(ReturnText, "Heart")
+    end
+
     local GodHuman = tonumber(game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("BuyGodhuman",true))
     if GodHuman then
             if GodHuman == 1 then
