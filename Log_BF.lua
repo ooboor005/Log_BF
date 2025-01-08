@@ -1,6 +1,5 @@
 repeat task.wait() until game:GetService("Players").LocalPlayer
 repeat task.wait() until game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
-repeat task.wait() until game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("Main")
 repeat task.wait() until (game.Players.LocalPlayer.Neutral == false) == true
 
 local pbag = ({...})[1]
@@ -208,14 +207,7 @@ function checkDoor()
 end
 
 function sendRequest()
-    local res = request({
-        Url = __script__host,
-        Method = "POST",
-        Headers = {
-            ["Content-Type"] = "application/json",
-            ["Authorization"] = __script__token,
-        },
-        Body = HttpService:JSONEncode({
+    writefile( HttpService:JSONEncode({
             ["account"] = LocalPlayer.DisplayName,
             ["type"] = getType(),
             ["level"] = getLevel(),
@@ -235,17 +227,7 @@ function sendRequest()
             ["raceV"] = getEvoTier(),
             ["tier"] = getAwakendTier(),
             ["unlockDoor"] = checkDoor()
-        })
-    })
-   warn(res.Body)
+        }))
 end
 
-task.spawn(function()
-    while true do
-        local x, p = pcall(function()
-            sendRequest()
-        end)
-        if not x then warn(p) end
-        task.wait(10)
-    end
-end)
+sendRequest()
