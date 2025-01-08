@@ -1,11 +1,6 @@
 repeat task.wait() until game:GetService("Players").LocalPlayer
 repeat task.wait() until game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
 repeat task.wait() until (game.Players.LocalPlayer.Neutral == false) == true
-
-local pbag = ({...})[1]
-local __script__host = pbag[1]
-local __script__token = pbag[2]
-local __script__machine = pbag[3]
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -109,10 +104,10 @@ end
 
 function GetFruitInU()
     local ReturnText = {}
-    for i,v in pairs(game:GetService("ReplicatedStorage").Remotes["CommF_"]:InvokeServer("getInventoryFruits")) do
+    for i,v in pairs(game:GetService("ReplicatedStorage").Remotes["CommF_"]:InvokeServer("getInventory")) do
         if type(v) == "table" then
-            if v ~= nil then
-                if v.Price >= 100000  then
+            if v ~= nil and v.Type == "Blox Fruit" then
+                if v.Value >= 100000  then
                     table.insert(ReturnText,string.split(v.Name,"-")[2])
                 end
             end
