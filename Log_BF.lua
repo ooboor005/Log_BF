@@ -26,6 +26,7 @@ function getWorld()
 		return 3
 	end
 end
+
 function getItem(itemName) 
     for i,v in pairs(game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("getInventory")) do
         if type(v) == "table" then
@@ -38,6 +39,7 @@ function getItem(itemName)
     end
     return false
 end
+
 function getFruitMastery()
     if game:GetService("Players").LocalPlayer.Data.DevilFruit.Value == '' then return 0 end
     if LocalPlayer:FindFirstChild("Backpack") then 
@@ -79,12 +81,14 @@ function getAwakend()
         end
 
         if #SkillAWakenedList == totalSkills and totalSkills > 0 then
-            return "Awakened"
+            -- ถ้า awakened ครบ ให้เพิ่ม "Awakened" เข้าไปใน table
+            table.insert(SkillAWakenedList, "Awakened")
         end
     end
 
     return SkillAWakenedList
 end
+
 
 function getMeele()
     local MeleeName, RequestMeleeName = {}, nil;
