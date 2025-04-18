@@ -74,8 +74,8 @@ function getAwakend()
     if getAwakenedAbilitiesRequests then
         local totalSkills = 0
         for i, v in pairs(getAwakenedAbilitiesRequests) do
-            totalSkills = totalSkills + 1
             if v["Awakened"] then 
+		totalSkills = totalSkills + 1
                 table.insert(SkillAWakenedList, i)
             end
         end
