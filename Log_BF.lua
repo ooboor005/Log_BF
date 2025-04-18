@@ -68,27 +68,28 @@ function getFruitName()
 end
 
 function getAwakend()
-    local SkillAWakenedList = {}
-    local getAwakenedAbilitiesRequests = game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("getAwakenedAbilities")
-    
-    if getAwakenedAbilitiesRequests then
-        local totalSkills = 0
-        for i, v in pairs(getAwakenedAbilitiesRequests) do
-            if v["Awakened"] then 
-		totalSkills = totalSkills + 1
-                table.insert(SkillAWakenedList, i)
+    Awakened = {}
+    Skill = 0
+    if game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("AwakeningChanger", "Check") then
+        Remote_Awaken = game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("getAwakenedAbilities")
+        for i, v in pairs(Remote_Awaken) do
+            Skill = Skill + 1
+            if v["Key"] then
+                if v["Awakened"] then
+                    if i ~= "X" then
+                        table.insert(Awakened, v["Key"])
+                    else
+                        table.insert(Awakened, v["Key"])
+                    end
+                end
             end
         end
-
-        if #SkillAWakenedList == totalSkills and totalSkills > 0 then
-            -- ถ้า awakened ครบ ให้เพิ่ม "Awakened" เข้าไปใน table
-            table.insert(SkillAWakenedList, "Awakened")
-        end
     end
-
-    return SkillAWakenedList
+    if tonumber(#Awakened) == tonumber(Skill) and tonumber(Skill) ~= 0 then
+        return {"Awakened"}
+    end
+    return Awakened
 end
-
 
 function getMeele()
     local MeleeName, RequestMeleeName = {}, nil;
