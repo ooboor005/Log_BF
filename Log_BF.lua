@@ -4,6 +4,7 @@ repeat task.wait() until (game.Players.LocalPlayer.Neutral == false) == true
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+
 local MeleeRequestList = {
     ["Death Step"] = "BuyDeathStep",
     ["Sharkman Karate"] = "BuySharkmanKarate",
@@ -105,10 +106,10 @@ end
 function getSword()
     local SwordList, RequestGetInvertory = {}, nil
     RequestGetInvertory = game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("getInventory")
-    for i , v in pairs(RequestGetInvertory) do 
+    for _, v in pairs(RequestGetInvertory) do 
         if v['Type'] == "Sword" then 
             if v['Rarity'] >= 3 then
-                table.insert(SwordList, v['Name'])
+                table.insert(SwordList, v['Name']..' ['..v.Mastery..']')
             end
         end
     end
@@ -136,6 +137,7 @@ function len(x)
     end
     return q
 end
+
 function findItem(item) 
     local RequestgetInventory;
     RequestgetInventory = game:GetService("ReplicatedStorage").Remotes["CommF_"]:InvokeServer("getInventory")
@@ -146,30 +148,27 @@ function findItem(item)
     end
     return false
 end
+
 function getType()
     local ReturnText = {}
-    if findItem("Cursed Dual Katana") then 
-        table.insert(ReturnText, "CDK")
-    end
-    if findItem("Shark Anchor") then 
-        table.insert(ReturnText, "SA")
-    end
-    if findItem("Soul Guitar") then
-        table.insert(ReturnText, "SG")
-    end
-    if findItem("Leviathan Heart") then
-        table.insert(ReturnText, "Heart")
-    end
+    local GodHumanLevel = 0
+    local GodHuman = tonumber(game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("BuyGodhuman", true))
 
-    local GodHuman = tonumber(game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("BuyGodhuman",true))
-    if GodHuman then
-            if GodHuman == 1 then
-                table.insert(ReturnText, "GOD")
+    if GodHuman == 1 then
+        local tool = LocalPlayer.Character:FindFirstChild('Godhuman') or LocalPlayer.Backpack:FindFirstChild('Godhuman') 
+        if tool then
+            local level = tool:FindFirstChild("Level")
+            if level and level:IsA("IntValue") then
+                GodHumanLevel = level.Value
             end
+        end
+        table.insert(ReturnText, "GOD".." ["..GodHumanLevel.."]")
     end
-    if len(ReturnText) == 0 then
+    
+    if #ReturnText == 0 then
         table.insert(ReturnText, "NOOB")
     end
+
     return table.concat(ReturnText, " ")
 end
 
