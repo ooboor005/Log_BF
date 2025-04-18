@@ -68,14 +68,22 @@ end
 function getAwakend()
     local SkillAWakenedList = {}
     local getAwakenedAbilitiesRequests = game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("getAwakenedAbilities")
+    
     if getAwakenedAbilitiesRequests then
-    for i, v in pairs(getAwakenedAbilitiesRequests) do
-        if v["Awakened"] then 
+        local totalSkills = 0
+        for i, v in pairs(getAwakenedAbilitiesRequests) do
+            totalSkills = totalSkills + 1
+            if v["Awakened"] then 
                 table.insert(SkillAWakenedList, i)
             end
         end
+
+        if #SkillAWakenedList == totalSkills and totalSkills > 0 then
+            return "Awakened"
+        end
     end
-    return SkillAWakenedList;
+
+    return SkillAWakenedList
 end
 
 function getMeele()
@@ -115,6 +123,7 @@ function GetFruitInU()
     end
     return ReturnText
 end
+
 function len(x)
     local q = 0
     for i, v in pairs(x) do
