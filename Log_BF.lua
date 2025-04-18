@@ -109,7 +109,7 @@ function getSword()
     for _, v in pairs(RequestGetInvertory) do 
         if v['Type'] == "Sword" then 
             if v['Rarity'] >= 3 then
-                table.insert(SwordList, v['Name']..' ['..v.Mastery..']')
+                table.insert(SwordList, v['Name']..'|'..v.Mastery)
             end
         end
     end
@@ -162,13 +162,8 @@ function getType()
                 GodHumanLevel = level.Value
             end
         end
-        table.insert(ReturnText, "GOD".." ["..GodHumanLevel.."]")
+        table.insert(ReturnText, "GOD".."|"..GodHumanLevel)
     end
-    
-    if #ReturnText == 0 then
-        table.insert(ReturnText, "NOOB")
-    end
-
     return table.concat(ReturnText, " ")
 end
 
