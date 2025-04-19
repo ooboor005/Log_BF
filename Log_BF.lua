@@ -154,7 +154,20 @@ function getType()
     local ReturnText = {}
     local GodHumanLevel = 0
     local GodHuman = tonumber(game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("BuyGodhuman", true))
-
+    
+    if findItem("Cursed Dual Katana") then 
+        table.insert(ReturnText, "CDK")
+    end
+    if findItem("Shark Anchor") then 
+        table.insert(ReturnText, "SA")
+    end
+    if findItem("Soul Guitar") then
+        table.insert(ReturnText, "SG")
+    end
+    if findItem("Leviathan Heart") then
+        table.insert(ReturnText, "Heart")
+    end
+	
     if GodHuman == 1 then
         local tool = LocalPlayer.Character:FindFirstChild('Godhuman') or LocalPlayer.Backpack:FindFirstChild('Godhuman') 
         if tool then
