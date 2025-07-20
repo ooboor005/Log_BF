@@ -2,7 +2,7 @@
 getgenv().Hermanos_Settings = {
 
     ['key'] = 'c1346861-c7f7-43fc-bab1-9a09b9739426',
-    ['PC'] = '13',
+    ['PC'] = '3',
 
 
     ['Seeds'] = {"Stonebite", "Paradise Petal", "Horned Dinoshroom", "Boneboo", "Firefly Fern", "Fossilight", "Giant Pinecone", "Grand Volcania", "Dragon Peper", "Elephant Ears", "Wild Carrot", "Pear", "Cantaloupe", "Parasol Flower", "Rosy Delight", "Ember Lily", "Honeysuckle", "Lumira", "Dandelion", "Nectarshade", "Manuka Flower", "Lavender", "Sunflower", "Beanstalk", "Candy Blossom", "Grapes", "Mango", "Cactus", "Cherry Blossom", "Moon Blossom", "Delphinium", "Lily of the Valley", "Aloe Vera", "Guanabana", "White Mulberry", "Peace Lily", "Pitcher Plant", "Burning Bud", "Rafflesia"},
