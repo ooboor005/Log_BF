@@ -1,0 +1,12 @@
+repeat wait() until game:IsLoaded()
+getgenv().Hermanos_Settings = {
+    ['key'] = 'c1346861-c7f7-43fc-bab1-9a09b9739426',
+    ['PC'] = 'PC-6',
+}
+local githubConfig = loadstring(game:HttpGet('https://github.com/ooboor005/Log_BF/raw/refs/heads/main/Config_Gag'))()
+for k, v in pairs(githubConfig) do
+    getgenv().Hermanos_Settings[k] = v
+end
+task.spawn(function()
+    loadstring(game:HttpGet('https://raw.githubusercontent.com/hermanos-dev/hermanos-script/main/gag-main.lua'))()
+end)
