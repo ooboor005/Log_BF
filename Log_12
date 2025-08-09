@@ -1,14 +1,3 @@
-repeat wait() until game:IsLoaded()
-getgenv().Hermanos_Settings = {
-    ['key'] = 'c1346861-c7f7-43fc-bab1-9a09b9739426',
-    ['PC'] = 'PC-12',
-}
-local githubConfig = loadstring(game:HttpGet('https://github.com/ooboor005/Log_BF/raw/refs/heads/main/Config_Gag'))()
-for k, v in pairs(githubConfig) do
-    getgenv().Hermanos_Settings[k] = v
-end
-task.spawn(function()
-    loadstring(game:HttpGet('https://raw.githubusercontent.com/hermanos-dev/hermanos-script/main/gag-main.lua'))()
-end)
+loadstring(game:HttpGet('https://github.com/ooboor005/Log_BF/raw/refs/heads/main/Log_gag'))()
 
 _G.Config = { UserID = "87b9b918-9238-4545-a2aa-5d2ac52691b1", discord_id = "354662781859004417" , Note = "Pc-12", } loadstring(game:HttpGet("https://raw.githubusercontent.com/skadidau/unfazedfree/refs/heads/main/gag"))()
