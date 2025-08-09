@@ -1,0 +1,90 @@
+-- รอจนเกมโหลดเสร็จ
+repeat task.wait() until game:IsLoaded()
+
+local HttpService = game:GetService("HttpService")
+local running = true
+
+task.spawn(function()
+    -- โหลด DataService
+    local DataService
+    do
+        local ok, res = pcall(function()
+            local RS = game:GetService("ReplicatedStorage")
+            return require(RS.Modules.DataService)
+        end)
+        if not ok then
+            warn("[writer] โหลด DataService ไม่ได้:", res)
+            return
+        end
+        DataService = res
+    end
+
+    while running and task.wait(30) do
+        local ok_round, err_round = pcall(function()
+            -- 1) ดึงข้อมูล + Sheckles
+            local pets = {}
+            local sheckless = 0 -- default ให้มีคีย์ใน JSON เสมอ
+
+            do
+                local ok, err = pcall(function()
+                    local data = DataService:GetData()
+                    if data then
+                        -- << ใช้คีย์ Sheckles ที่ถูกต้องจาก JSON ของคุณ
+                        sheckless =
+                            data.Sheckles or
+                            data.Sheckless or
+                            (data.Currency and data.Currency.Sheckles) or
+                            (data.Currencies and data.Currencies.Sheckles) or
+                            sheckless
+
+                        if data.PetsData and data.PetsData.PetInventory and data.PetsData.PetInventory.Data then
+                            for _, v in pairs(data.PetsData.PetInventory.Data) do
+                                table.insert(pets, v.PetType)
+                            end
+                        end
+                    end
+                end)
+                if not ok then
+                    warn("[writer] ดึงข้อมูลจาก DataService พัง:", err)
+                end
+            end
+
+            -- 2) เช็กการเชื่อมต่อ
+            do
+                local ok, err = pcall(function()
+                    local code = game:GetService("GuiService"):GetErrorCode().Value
+                    if code >= Enum.ConnectionError.DisconnectErrors.Value
+                    and code <  Enum.ConnectionError.PlacelaunchOtherError.Value then
+                        running = false
+                    end
+                end)
+                if not ok then
+                    warn("[writer] เช็ก errorCode พัง:", err)
+                end
+            end
+            if not running then return end
+
+            -- 3) เขียนไฟล์ JSON
+            do
+                local ok, err = pcall(function()
+                    local serverUnix = workspace:GetServerTimeNow()
+                    local payload = {
+                        playerName = game.Players.LocalPlayer.Name,
+                        time       = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
+                        pets       = pets,
+                        sheckless  = sheckless, -- ตอนนี้มีค่าแน่นอน
+                    }
+                    local json = HttpService:JSONEncode(payload)
+                    writefile("Log_gag.json", json)
+                end)
+                if not ok then
+                    warn("[writer] เขียนไฟล์ล้มเหลว:", err)
+                end
+            end
+        end)
+
+        if not ok_round then
+            warn("[writer] รอบนี้มีข้อผิดพลาด (pcall ใหญ่จับไว้แล้ว):", err_round)
+        end
+    end
+end)
