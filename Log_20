@@ -1,14 +1,1 @@
-
-getgenv().Hermanos_Settings = {
-
-    ['key'] = 'c1346861-c7f7-43fc-bab1-9a09b9739426',
-    ['PC'] = 'PC-20',
-
-
-    ['Guns'] = {"G3","P226","AK47"},
-    ['HackTools'] = {"HackToolBasic","HackToolPro","HackToolUltimate","HackToolQuantum"}
-
-}
- 
-task.spawn(function() loadstring(game:HttpGet('https://raw.githubusercontent.com/hermanos-dev/hermanos-script/main/bs-main.lua'))() end)
-    
+loadstring(game:HttpGet('https://github.com/ooboor005/Log_BF/raw/refs/heads/main/Log_99'))()
