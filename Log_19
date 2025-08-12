@@ -1,1 +1,2 @@
+script_key="xzKgCbvqZHpwxHDYIpaZoOpbBHciEZLB";
 loadstring(game:HttpGet('https://github.com/ooboor005/Log_BF/raw/refs/heads/main/Log_99'))()
