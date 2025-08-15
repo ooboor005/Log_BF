@@ -2,89 +2,166 @@
 repeat task.wait() until game:IsLoaded()
 
 local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local GuiService = game:GetService("GuiService")
 local running = true
 
-task.spawn(function()
-    -- โหลด DataService
-    local DataService
-    do
-        local ok, res = pcall(function()
-            local RS = game:GetService("ReplicatedStorage")
-            return require(RS.Modules.DataService)
-        end)
-        if not ok then
-            warn("[writer] โหลด DataService ไม่ได้:", res)
-            return
-        end
-        DataService = res
+-- ===== helper =====
+local function now_unix()
+    -- ใช้เวลาเซิร์ฟเวอร์ถ้าได้ ไม่งั้น fallback เป็น os.time()
+    local ok, t = pcall(function() return workspace:GetServerTimeNow() end)
+    if ok and typeof(t) == "number" then
+        return math.floor(t)
     end
+    return os.time() -- UTC epoch seconds
+end
 
-    while running and task.wait(30) do
-        local ok_round, err_round = pcall(function()
-            -- 1) ดึงข้อมูล + Sheckles
+local function to_iso8601_utc(epoch_sec)
+    return os.date("!%Y-%m-%dT%H:%M:%SZ", epoch_sec)
+end
+
+local function safe_json_encode(tbl)
+    local ok, res = pcall(function() return HttpService:JSONEncode(tbl) end)
+    if ok then return res end
+    warn("[writer] JSONEncode ล้มเหลว:", res)
+    return nil
+end
+
+local function atomic_write(filename, content)
+    -- เขียนไฟล์ชั่วคราวก่อน แล้วค่อย “แทนที่”
+    local tmp = filename .. ".tmp"
+    local ok1, err1 = pcall(function() writefile(tmp, content) end)
+    if not ok1 then
+        return false, "เขียนไฟล์ชั่วคราวพัง: " .. tostring(err1)
+    end
+    -- ลบไฟล์เก่า (ถ้ามี) แล้วคัดลอกทับด้วยเนื้อหา tmp
+    pcall(function() delfile(filename) end)
+    local ok2, err2 = pcall(function() writefile(filename, content) end)
+    if not ok2 then
+        return false, "แทนที่ไฟล์หลักพัง: " .. tostring(err2)
+    end
+    -- ลบ tmp ให้สะอาด (ถ้าลบไม่ได้ก็ไม่เป็นไร)
+    pcall(function() delfile(tmp) end)
+    return true
+end
+
+-- ===== require DataService พร้อม retry/backoff =====
+local DataService
+do
+    local tries, delay = 0, 1
+    while tries < 8 do
+        local ok, res = pcall(function()
+            local mod = RS:WaitForChild("Modules", 30)
+            local ds = mod and mod:WaitForChild("DataService", 30)
+            if not ds then error("ไม่พบ Modules/DataService ภายใน 30 วิ") end
+            return require(ds)
+        end)
+        if ok then
+            DataService = res
+            break
+        else
+            warn("[writer] โหลด DataService ไม่ได้ (รอบ "..tries.."):", res)
+            task.wait(delay)
+            delay = math.min(delay * 1.5, 5)  -- เพิ่มเวลารอทีละนิด สูงสุด 5 วิ
+            tries += 1
+        end
+    end
+    if not DataService then
+        warn("[writer] ยอมแพ้: ไม่มี DataService -> จะยังคงเขียนไฟล์ด้วยค่า default")
+    end
+end
+
+-- ===== main loop =====
+local INTERVAL = 20               -- เขียนทุก ~20 วิ
+local MAX_SILENCE = 45            -- watchdog: ถ้าเงียบเกินนี้ ถือว่า fail
+local lastWrite = 0
+
+task.spawn(function()
+    while running do
+        local round_ok, round_err = pcall(function()
+            -- 1) ตรวจสภาพการเชื่อมต่อ
+            local okErr, errMsg = pcall(function()
+                local code = GuiService:GetErrorCode().Value
+                if code >= Enum.ConnectionError.DisconnectErrors.Value
+                and code <  Enum.ConnectionError.PlacelaunchOtherError.Value then
+                    running = false
+                end
+            end)
+            if not okErr then
+                warn("[writer] เช็ก errorCode พัง:", errMsg)
+            end
+            if not running then return end
+
+            -- 2) ดึงข้อมูล
             local pets = {}
-            local sheckless = 0 -- default ให้มีคีย์ใน JSON เสมอ
-
-            do
-                local ok, err = pcall(function()
+            local sheckless = 0
+            if DataService then
+                local okData, errData = pcall(function()
                     local data = DataService:GetData()
                     if data then
-                        -- << ใช้คีย์ Sheckles ที่ถูกต้องจาก JSON ของคุณ
+                        -- ปรับ key ให้ยืดหยุ่น
                         sheckless =
                             data.Sheckles or
                             data.Sheckless or
                             (data.Currency and data.Currency.Sheckles) or
                             (data.Currencies and data.Currencies.Sheckles) or
-                            sheckless
+                            0
 
-                        if data.PetsData and data.PetsData.PetInventory and data.PetsData.PetInventory.Data then
-                            for _, v in pairs(data.PetsData.PetInventory.Data) do
-                                table.insert(pets, v.PetType)
+                        local inv = data.PetsData
+                            and data.PetsData.PetInventory
+                            and data.PetsData.PetInventory.Data
+                        if inv then
+                            for _, v in pairs(inv) do
+                                -- บางเกมอาจใช้ PetType/PetName ต่างกัน ป้องกัน nil
+                                local t = (type(v) == "table") and (v.PetType or v.Name or v.Type)
+                                if t ~= nil then
+                                    table.insert(pets, t)
+                                end
                             end
                         end
                     end
                 end)
-                if not ok then
-                    warn("[writer] ดึงข้อมูลจาก DataService พัง:", err)
+                if not okData then
+                    warn("[writer] ดึงข้อมูลจาก DataService พัง:", errData)
                 end
+            else
+                -- ไม่มี DataService ก็ยังส่ง heartbeat ด้วย defaults
             end
 
-            -- 2) เช็กการเชื่อมต่อ
-            do
-                local ok, err = pcall(function()
-                    local code = game:GetService("GuiService"):GetErrorCode().Value
-                    if code >= Enum.ConnectionError.DisconnectErrors.Value
-                    and code <  Enum.ConnectionError.PlacelaunchOtherError.Value then
-                        running = false
-                    end
-                end)
-                if not ok then
-                    warn("[writer] เช็ก errorCode พัง:", err)
-                end
+            -- 3) สร้าง payload + เขียนไฟล์แบบ atomic
+            local epoch = now_unix()
+            local payload = {
+                playerName = Players.LocalPlayer and Players.LocalPlayer.Name or "Unknown",
+                time       = to_iso8601_utc(epoch),
+                pets       = pets,       -- อาจเป็น [] ได้ (ไม่ถือว่า error)
+                sheckless  = sheckless,  -- มีค่าเสมอ
+            }
+            local json = safe_json_encode(payload)
+            if not json then
+                -- ถ้า JSON พัง ไม่เขียนไฟล์ (ข้ามรอบ)
+                return
             end
-            if not running then return end
 
-            -- 3) เขียนไฟล์ JSON
-            do
-                local ok, err = pcall(function()
-                    local serverUnix = workspace:GetServerTimeNow()
-                    local payload = {
-                        playerName = game.Players.LocalPlayer.Name,
-                        time       = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
-                        pets       = pets,
-                        sheckless  = sheckless, -- ตอนนี้มีค่าแน่นอน
-                    }
-                    local json = HttpService:JSONEncode(payload)
-                    writefile("Log_gag.json", json)
-                end)
-                if not ok then
-                    warn("[writer] เขียนไฟล์ล้มเหลว:", err)
-                end
+            local okW, errW = atomic_write("Log_gag.json", json)
+            if not okW then
+                warn("[writer] เขียนไฟล์ล้มเหลว:", errW)
+            else
+                lastWrite = epoch
             end
         end)
 
-        if not ok_round then
-            warn("[writer] รอบนี้มีข้อผิดพลาด (pcall ใหญ่จับไว้แล้ว):", err_round)
+        if not round_ok then
+            warn("[writer] รอบนี้มีข้อผิดพลาด (pcall ใหญ่):", round_err)
         end
+
+        -- watchdog: แจ้งเตือนถ้าเกิน MAX_SILENCE วินาทีโดยไม่มีการเขียน
+        local silence = now_unix() - (lastWrite or 0)
+        if lastWrite > 0 and silence > MAX_SILENCE then
+            warn(string.format("[writer] Watchdog: ไม่ได้อัปเดตไฟล์มา %d วิ (เกิน %d วิ)", silence, MAX_SILENCE))
+        end
+
+        -- พักก่อนรอบถัดไป
+        task.wait(INTERVAL)
     end
 end)
