@@ -8,6 +8,15 @@ local GuiService = game:GetService("GuiService")
 local running = true
 
 -- ===== helper =====
+local function firstNonNil(...)
+    local n = select("#", ...)
+    for i = 1, n do
+        local v = select(i, ...)
+        if v ~= nil then return v end
+    end
+    return nil
+end
+
 local function now_unix()
     -- ใช้เวลาเซิร์ฟเวอร์ถ้าได้ ไม่งั้น fallback เป็น os.time()
     local ok, t = pcall(function() return workspace:GetServerTimeNow() end)
@@ -102,21 +111,40 @@ task.spawn(function()
                     if data then
                         -- ปรับ key ให้ยืดหยุ่น
                         sheckless =
-                            data.Sheckles or
-                            data.Sheckless or
-                            (data.Currency and data.Currency.Sheckles) or
-                            (data.Currencies and data.Currencies.Sheckles) or
-                            0
+                            firstNonNil(
+                                data.Sheckles,
+                                data.Sheckless,
+                                (data.Currency and data.Currency.Sheckles),
+                                (data.Currencies and data.Currencies.Sheckles)
+                            ) or 0
 
                         local inv = data.PetsData
                             and data.PetsData.PetInventory
                             and data.PetsData.PetInventory.Data
-                        if inv then
+                        if type(inv) == "table" then
                             for _, v in pairs(inv) do
-                                -- บางเกมอาจใช้ PetType/PetName ต่างกัน ป้องกัน nil
-                                local t = (type(v) == "table") and (v.PetType or v.Name or v.Type)
-                                if t ~= nil then
-                                    table.insert(pets, t)
+                                if type(v) == "table" then
+                                    -- ชื่อสัตว์: เผื่อทั้งบนสุดและใน PetData
+                                    local name = firstNonNil(
+                                        v.PetType, v.Name, v.Type,
+                                        v.DisplayName, v.CustomName,
+                                        v.PetData and (v.PetData.PetType or v.PetData.DisplayName or v.PetData.CustomName)
+                                    )
+                                    -- น้ำหนัก/เลเวล: เผื่อหลายคีย์
+                                    local weight = firstNonNil(
+                                        v.BaseWeight, v.Weight,
+                                        v.PetData and (v.PetData.BaseWeight or v.PetData.Weight)
+                                    )
+                                    local age = firstNonNil(
+                                        v.Level, v.Age,
+                                        v.PetData and (v.PetData.Level or v.PetData.Age)
+                                    )
+
+                                    table.insert(pets, {
+                                        name   = tostring(name or "Unknown"),
+                                        weight = tonumber(weight) or 0,
+                                        age    = tonumber(age) or 0,
+                                    })
                                 end
                             end
                         end
@@ -126,7 +154,7 @@ task.spawn(function()
                     warn("[writer] ดึงข้อมูลจาก DataService พัง:", errData)
                 end
             else
-                -- ไม่มี DataService ก็ยังส่ง heartbeat ด้วย defaults
+                -- ไม่มี DataService ก็ยังส่ง heartbeat ด้วย defaults (pets ว่าง ๆ)
             end
 
             -- 3) สร้าง payload + เขียนไฟล์แบบ atomic
@@ -134,7 +162,7 @@ task.spawn(function()
             local payload = {
                 playerName = Players.LocalPlayer and Players.LocalPlayer.Name or "Unknown",
                 time       = to_iso8601_utc(epoch),
-                pets       = pets,       -- อาจเป็น [] ได้ (ไม่ถือว่า error)
+                pets       = pets,       -- ตอนนี้เป็น array ของ object {name, weight, age}
                 sheckless  = sheckless,  -- มีค่าเสมอ
             }
             local json = safe_json_encode(payload)
