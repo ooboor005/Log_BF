@@ -2,12 +2,14 @@
 repeat task.wait() until game:IsLoaded()
 
 local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
-local RS = game:GetService("ReplicatedStorage")
-local GuiService = game:GetService("GuiService")
+local GuiService  = game:GetService("GuiService")
+local Players     = game:GetService("Players")
+local RS          = game:GetService("ReplicatedStorage")
+local WS          = game:GetService("Workspace")
+
 local running = true
 
--- ===== helper =====
+-- ตัวช่วยเลือกค่าตัวแรกที่ไม่ nil
 local function firstNonNil(...)
     local n = select("#", ...)
     for i = 1, n do
@@ -17,179 +19,138 @@ local function firstNonNil(...)
     return nil
 end
 
-local function now_unix()
-    -- ใช้เวลาเซิร์ฟเวอร์ถ้าได้ ไม่งั้น fallback เป็น os.time()
-    local ok, t = pcall(function() return workspace:GetServerTimeNow() end)
-    if ok and typeof(t) == "number" then
-        return math.floor(t)
-    end
-    return os.time() -- UTC epoch seconds
-end
-
-local function to_iso8601_utc(epoch_sec)
-    return os.date("!%Y-%m-%dT%H:%M:%SZ", epoch_sec)
-end
-
-local function safe_json_encode(tbl)
-    local ok, res = pcall(function() return HttpService:JSONEncode(tbl) end)
-    if ok then return res end
-    warn("[writer] JSONEncode ล้มเหลว:", res)
-    return nil
-end
-
-local function atomic_write(filename, content)
-    -- เขียนไฟล์ชั่วคราวก่อน แล้วค่อย “แทนที่”
-    local tmp = filename .. ".tmp"
-    local ok1, err1 = pcall(function() writefile(tmp, content) end)
-    if not ok1 then
-        return false, "เขียนไฟล์ชั่วคราวพัง: " .. tostring(err1)
-    end
-    -- ลบไฟล์เก่า (ถ้ามี) แล้วคัดลอกทับด้วยเนื้อหา tmp
-    pcall(function() delfile(filename) end)
-    local ok2, err2 = pcall(function() writefile(filename, content) end)
-    if not ok2 then
-        return false, "แทนที่ไฟล์หลักพัง: " .. tostring(err2)
-    end
-    -- ลบ tmp ให้สะอาด (ถ้าลบไม่ได้ก็ไม่เป็นไร)
-    pcall(function() delfile(tmp) end)
-    return true
-end
-
--- ===== require DataService พร้อม retry/backoff =====
-local DataService
-do
-    local tries, delay = 0, 1
-    while tries < 8 do
-        local ok, res = pcall(function()
-            local mod = RS:WaitForChild("Modules", 30)
-            local ds = mod and mod:WaitForChild("DataService", 30)
-            if not ds then error("ไม่พบ Modules/DataService ภายใน 30 วิ") end
-            return require(ds)
-        end)
-        if ok then
-            DataService = res
-            break
-        else
-            warn("[writer] โหลด DataService ไม่ได้ (รอบ "..tries.."):", res)
-            task.wait(delay)
-            delay = math.min(delay * 1.5, 5)  -- เพิ่มเวลารอทีละนิด สูงสุด 5 วิ
-            tries += 1
-        end
-    end
-    if not DataService then
-        warn("[writer] ยอมแพ้: ไม่มี DataService -> จะยังคงเขียนไฟล์ด้วยค่า default")
+-- ปัดทศนิยม n ตำแหน่ง (รองรับค่าติดลบด้วย)
+local function roundTo(x, n)
+    n = n or 0
+    local p = 10 ^ n
+    if x >= 0 then
+        return math.floor(x * p + 0.5) / p
+    else
+        return math.ceil(x * p - 0.5) / p
     end
 end
-
--- ===== main loop =====
-local INTERVAL = 20               -- เขียนทุก ~20 วิ
-local MAX_SILENCE = 45            -- watchdog: ถ้าเงียบเกินนี้ ถือว่า fail
-local lastWrite = 0
 
 task.spawn(function()
-    while running do
-        local round_ok, round_err = pcall(function()
-            -- 1) ตรวจสภาพการเชื่อมต่อ
-            local okErr, errMsg = pcall(function()
-                local code = GuiService:GetErrorCode().Value
-                if code >= Enum.ConnectionError.DisconnectErrors.Value
-                and code <  Enum.ConnectionError.PlacelaunchOtherError.Value then
-                    running = false
-                end
-            end)
-            if not okErr then
-                warn("[writer] เช็ก errorCode พัง:", errMsg)
-            end
-            if not running then return end
+    -- โหลด DataService อย่างปลอดภัย
+    local DataService
+    do
+        local ok, res = pcall(function()
+            return require(RS.Modules.DataService)
+        end)
+        if not ok then
+            warn("[writer] โหลด DataService ไม่ได้:", res)
+            return
+        end
+        DataService = res
+    end
 
-            -- 2) ดึงข้อมูล
+    -- ปรับช่วงเวลาเป็น 2–5 วิ เพื่อลดการเขียนถี่เกินไป (1 วิ อาจหนักเกิน/โดน throttle)
+    while running and task.wait(2) do
+        local ok_round, err_round = pcall(function()
+            -- 1) ดึงข้อมูล + Sheckles
             local pets = {}
-            local sheckless = 0
-            if DataService then
-                local okData, errData = pcall(function()
+            local sheckless = 0 -- ให้มีคีย์ใน JSON เสมอ
+
+            do
+                local ok, err = pcall(function()
                     local data = DataService:GetData()
                     if data then
-                        -- ปรับ key ให้ยืดหยุ่น
+                        -- รองรับหลายคีย์ของ Sheckles
                         sheckless =
                             firstNonNil(
                                 data.Sheckles,
                                 data.Sheckless,
+                                data.sheckles,
+                                data.sheckless,
                                 (data.Currency and data.Currency.Sheckles),
                                 (data.Currencies and data.Currencies.Sheckles)
-                            ) or 0
+                            ) or sheckless
 
+                        -- เดินอินเวนทอรีสัตว์เลี้ยงแบบยืดหยุ่น
                         local inv = data.PetsData
                             and data.PetsData.PetInventory
                             and data.PetsData.PetInventory.Data
+
                         if type(inv) == "table" then
                             for _, v in pairs(inv) do
-                                if type(v) == "table" then
-                                    -- ชื่อสัตว์: เผื่อทั้งบนสุดและใน PetData
-                                    local name = firstNonNil(
-                                        v.PetType, v.Name, v.Type,
-                                        v.DisplayName, v.CustomName,
-                                        v.PetData and (v.PetData.PetType or v.PetData.DisplayName or v.PetData.CustomName)
-                                    )
-                                    -- น้ำหนัก/เลเวล: เผื่อหลายคีย์
-                                    local weight = firstNonNil(
-                                        v.BaseWeight, v.Weight,
-                                        v.PetData and (v.PetData.BaseWeight or v.PetData.Weight)
-                                    )
-                                    local age = firstNonNil(
-                                        v.Level, v.Age,
-                                        v.PetData and (v.PetData.Level or v.PetData.Age)
-                                    )
+                                -- รองรับทั้ง 2 สchemา: บนสุด vs ใต้ PetData
+                                local petType    = firstNonNil(v.PetType,   v.petType,   v.PetData and v.PetData.PetType)
+                                local baseWeight = firstNonNil(v.BaseWeight,v.baseWeight,v.PetData and v.PetData.BaseWeight)
+                                local level      = firstNonNil(v.Level,     v.level,     v.PetData and v.PetData.Level)
 
+                                -- บางเกมเก็บชื่อไว้เป็น DisplayName/CustomName
+                                local display = firstNonNil(
+                                    v.DisplayName, v.displayName, v.CustomName, v.customName,
+                                    v.PetData and (v.PetData.DisplayName or v.PetData.CustomName)
+                                )
+
+                                -- ถ้ายังไม่มีชื่อ ให้ใช้ petType เป็นชื่อหลัก
+                                local name = firstNonNil(display, petType)
+
+                                -- >>> แปลง weight เป็นเลขทศนิยม 1 ตำแหน่ง <<<
+                                local wnum = tonumber(baseWeight) or 0
+                                local w1   = roundTo(wnum, 1)  -- ตัวอย่าง: 1.14456746 -> 1.1
+
+                                if name then
                                     table.insert(pets, {
-                                        name   = tostring(name or "Unknown"),
-                                        weight = tonumber(weight) or 0,
-                                        age    = tonumber(age) or 0,
+                                        name   = tostring(name),
+                                        weight = w1,
+                                        age    = tonumber(level) or 0
+                                    })
+                                else
+                                    table.insert(pets, {
+                                        name   = "Unknown",
+                                        weight = w1,
+                                        age    = tonumber(level) or 0
                                     })
                                 end
                             end
+                        else
+                            warn("[writer] ไม่พบตาราง PetInventory.Data ที่คาดไว้")
                         end
                     end
                 end)
-                if not okData then
-                    warn("[writer] ดึงข้อมูลจาก DataService พัง:", errData)
+                if not ok then
+                    warn("[writer] ดึงข้อมูลจาก DataService พัง:", err)
                 end
-            else
-                -- ไม่มี DataService ก็ยังส่ง heartbeat ด้วย defaults (pets ว่าง ๆ)
             end
 
-            -- 3) สร้าง payload + เขียนไฟล์แบบ atomic
-            local epoch = now_unix()
-            local payload = {
-                playerName = Players.LocalPlayer and Players.LocalPlayer.Name or "Unknown",
-                time       = to_iso8601_utc(epoch),
-                pets       = pets,       -- ตอนนี้เป็น array ของ object {name, weight, age}
-                sheckless  = sheckless,  -- มีค่าเสมอ
-            }
-            local json = safe_json_encode(payload)
-            if not json then
-                -- ถ้า JSON พัง ไม่เขียนไฟล์ (ข้ามรอบ)
-                return
+            -- 2) เช็กการเชื่อมต่อ
+            do
+                local ok, err = pcall(function()
+                    local code = GuiService:GetErrorCode().Value
+                    if code >= Enum.ConnectionError.DisconnectErrors.Value
+                    and code <  Enum.ConnectionError.PlacelaunchOtherError.Value then
+                        running = false
+                    end
+                end)
+                if not ok then
+                    warn("[writer] เช็ก errorCode พัง:", err)
+                end
             end
+            if not running then return end
 
-            local okW, errW = atomic_write("Log_gag.json", json)
-            if not okW then
-                warn("[writer] เขียนไฟล์ล้มเหลว:", errW)
-            else
-                lastWrite = epoch
+            -- 3) เขียนไฟล์ JSON
+            do
+                local ok, err = pcall(function()
+                    local serverUnix = WS:GetServerTimeNow()
+                    local payload = {
+                        playerName = Players.LocalPlayer and Players.LocalPlayer.Name or "UnknownPlayer",
+                        time       = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
+                        pets       = pets,
+                        sheckless  = sheckless,
+                    }
+                    local json = HttpService:JSONEncode(payload)
+                    writefile("Log_gag.json", json)
+                end)
+                if not ok then
+                    warn("[writer] เขียนไฟล์ล้มเหลว:", err)
+                end
             end
         end)
 
-        if not round_ok then
-            warn("[writer] รอบนี้มีข้อผิดพลาด (pcall ใหญ่):", round_err)
+        if not ok_round then
+            warn("[writer] รอบนี้มีข้อผิดพลาด (pcall ใหญ่จับไว้แล้ว):", err_round)
         end
-
-        -- watchdog: แจ้งเตือนถ้าเกิน MAX_SILENCE วินาทีโดยไม่มีการเขียน
-        local silence = now_unix() - (lastWrite or 0)
-        if lastWrite > 0 and silence > MAX_SILENCE then
-            warn(string.format("[writer] Watchdog: ไม่ได้อัปเดตไฟล์มา %d วิ (เกิน %d วิ)", silence, MAX_SILENCE))
-        end
-
-        -- พักก่อนรอบถัดไป
-        task.wait(INTERVAL)
     end
 end)
