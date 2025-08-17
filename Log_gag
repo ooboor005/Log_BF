@@ -45,7 +45,7 @@ task.spawn(function()
     end
 
     -- ปรับช่วงเวลาเป็น 2–5 วิ เพื่อลดการเขียนถี่เกินไป (1 วิ อาจหนักเกิน/โดน throttle)
-    while running and task.wait(2) do
+    while running and task.wait(3) do
         local ok_round, err_round = pcall(function()
             -- 1) ดึงข้อมูล + Sheckles
             local pets = {}
