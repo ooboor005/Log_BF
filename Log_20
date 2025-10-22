@@ -1,2 +1,2 @@
 loadstring(game:HttpGet("https://github.com/ooboor005/Log_BF/raw/refs/heads/main/Log_99"))()
-_G.Config = { UserID = "87b9b918-9238-4545-a2aa-5d2ac52691b1", discord_id = "354662781859004417" , Note = "Pc", } loadstring(game:HttpGet("https://raw.githubusercontent.com/skadidau/unfazedfree/refs/heads/main/99night"))()
+_G.Config = { UserID = "87b9b918-9238-4545-a2aa-5d2ac52691b1", discord_id = "354662781859004417" , Note = "Pc-20", } loadstring(game:HttpGet("https://raw.githubusercontent.com/skadidau/unfazedfree/refs/heads/main/99night"))()
