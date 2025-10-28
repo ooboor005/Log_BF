@@ -1,5 +1,5 @@
 -- ✅ พร้อมรัน: Watchdog เงินนิ่ง 15 นาที + เก็บข้อมูล + POST
-print("Hello, world!");
+
 -- รอเกมโหลด + เช็ก Creator
 repeat task.wait() until game:IsLoaded() and game.CreatorId == 7381705
 
@@ -35,7 +35,7 @@ if type(env.task) == "table" and typeof(env.task.spawn) == "function" then
 end
 
 -- ====== [Watchdog] เงินไม่ขยับเกิน X นาที -> ปิดเกม/Kick ======
-local NO_UPDATE_MINUTES = 1
+local NO_UPDATE_MINUTES = 15
 local lastMoney = nil
 local lastChangeAt = os.time()
 
