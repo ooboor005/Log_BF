@@ -2,11 +2,13 @@
 repeat task.wait() until game:IsLoaded()
 local Players = game:GetService("Players")
 repeat task.wait() until Players.LocalPlayer
+local ClassProgress = Players.LocalPlayer:WaitForChild("ClassProgress")
 
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService")
 
 local running = true
+local Class_name = {}
 
 task.spawn(function()
     while running do
@@ -35,10 +37,30 @@ task.spawn(function()
             local ok2, t = pcall(function() return workspace:GetServerTimeNow() end)
             serverUnix = ok2 and t or os.time()
 
+
+            -- ดึงข้อมูล Cass
+
+			if game.PlaceId == 126509999114328 then
+				for _, obj in ipairs(Inventory:GetChildren()) do
+					if tostring(obj.Name) == "Laser Cannon" then
+						table.insert(Class_name, "Cyborg")
+					end
+				end
+			end
+
+			if game.PlaceId ~=  126509999114328 then
+				for _, obj in ipairs(ClassProgress:GetDescendants()) do
+					if obj:IsA("Folder") then
+						table.insert(Class_name, obj.Name)
+					end
+				end
+			end
+			
             -- เขียนไฟล์
             writefile("Log_99.json", HttpService:JSONEncode({
                 playerName = lp.Name,
                 Diamond    = diamonds,
+                Class    = Class_name,
                 time       = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
             }))
         end)
@@ -48,5 +70,6 @@ task.spawn(function()
         end
 
         task.wait(3)
+		break
     end
 end)
