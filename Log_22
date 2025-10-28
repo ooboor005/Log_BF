@@ -1,8 +1,27 @@
+-- ✅ พร้อมรัน: Watchdog เงินนิ่ง 15 นาที + เก็บข้อมูล + POST
+print("Hello, world!");
+-- รอเกมโหลด + เช็ก Creator
 repeat task.wait() until game:IsLoaded() and game.CreatorId == 7381705
-repeat task.wait() until game:GetService("Players").LocalPlayer.PlayerGui.loading.Enabled == false
 
+-- บางแมพอาจไม่มี PlayerGui.loading: ถ้าไม่มี ให้รอไม่เกิน 30 วิแล้วไปต่อ
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+do
+	local t0 = os.time()
+	while true do
+		local ok, ready = pcall(function()
+			local gui = player and player.PlayerGui
+			return gui and gui.loading and (gui.loading.Enabled == false)
+		end)
+		if ok and ready then break end
+		if os.time() - t0 > 30 then break end
+		task.wait(0.5)
+	end
+end
 
+-- ====== ตั้งค่า environment ======
 local waitFn = task.wait
+local spawnFn = task.spawn
 local httpService = game:GetService("HttpService")
 local postRequest = getgenv().request or function(...) return ... end
 local getrenvFn = getgenv().getrenv or function(...) return ... end
@@ -11,95 +30,168 @@ local env = getrenvFn()
 if type(env.task) == "table" and typeof(env.task.wait) == "function" then
 	waitFn = env.task.wait
 end
+if type(env.task) == "table" and typeof(env.task.spawn) == "function" then
+	spawnFn = env.task.spawn
+end
 
-if type(env.task.spawn) == "function" then
-	env.task.spawn(function()
-		while true do
-			waitFn()
-			local x, p = pcall(function()
-				local player = game:GetService("Players").LocalPlayer
-				local gui = player.PlayerGui
-				local inventory = gui.backpack.inventory.scroll
-				local hotbar = gui.backpack.hotbar
-				local rodsScroll = gui.hud.safezone.equipment.rods.scroll.safezone
-				local fishList, rodsList = {}, {}
-				local enchantRelicCount, baitCrateCount = 0, 0
-				local function parseStack(text)
-					local result = ""
-					string.gsub(text, "%d+", function(d) result = result .. d end)
-					return tonumber(result) or 1
-				end
-				local function parseWeight(text)
-					local result = ""
-					string.gsub(text, "%d[%d.,]*", function(d) result = result .. d end)
-					return tonumber(result) or 1
-				end
-				local function cleanName(name)
-					if string.find(name, "</font>") then
-						for match in (name .. "'>"):gmatch("(.-)'%>") do
-							if match ~= "" then
-								return string.gsub(match, "</font>", "")
-							end
+-- ====== [Watchdog] เงินไม่ขยับเกิน X นาที -> ปิดเกม/Kick ======
+local NO_UPDATE_MINUTES = 1
+local lastMoney = nil
+local lastChangeAt = os.time()
+
+local function shutdownNow(reason)
+	warn("[AutoShutdown] " .. tostring(reason))
+	-- พยายามปิดไคลเอนต์ (ถ้าสภาพแวดล้อมรองรับ)
+	pcall(function() game:Shutdown() end)
+	-- ถ้าไม่รองรับ ให้เตะตัวเองออก (ให้ตัวจัดการภายนอกรีสตาร์ทแทน)
+	pcall(function() Players.LocalPlayer:Kick(tostring(reason)) end)
+end
+
+-- ====== Utils แปลงตัวเลข/ข้อความ ======
+local function parseStack(text) -- ดึงเฉพาะตัวเลขสำหรับจำนวนชิ้น (เช่น "x12" -> 12)
+	local s = tostring(text or "")
+	local result = ""
+	s:gsub("%d+", function(d) result ..= d end)
+	return tonumber(result) or tonumber(text) or 0
+end
+
+local function parseHumanNumber(s) -- รองรับ 12.5K / 3.2M / 1B ฯลฯ
+	s = tostring(s or ""):upper()
+	-- ถ้าเป็น NumberValue ตรง ๆ
+	if typeof(s) == "number" then return s end
+	local num = s:match("[+-]?%d*%.?%d+")
+	if not num then return tonumber(s) or 0 end
+	num = tonumber(num)
+	if s:find("K") then num = num * 1e3 end
+	if s:find("M") then num = num * 1e6 end
+	if s:find("B") then num = num * 1e9 end
+	return math.floor(num + 0.5)
+end
+
+local function parseWeight(text) -- ดึงค่าน้ำหนักที่มีจุด/คอมมา
+	local s = tostring(text or "")
+	local only = s:match("%d[%d.,]*")
+	if not only then return 0 end
+	only = only:gsub(",", "")
+	return tonumber(only) or 0
+end
+
+local function cleanName(name) -- ล้าง tag font ออกจากชื่อ
+	local s = tostring(name or "")
+	if s:find("</font>") then
+		for match in (s .. "'>"):gmatch("(.-)'%>") do
+			if match ~= "" then
+				return (match:gsub("</font>", ""))
+			end
+		end
+	end
+	return s
+end
+
+-- ====== Main Loop ======
+spawnFn(function()
+	while true do
+		waitFn()
+
+		local ok, err = pcall(function()
+			local gui = player.PlayerGui
+
+			-- เตรียมตะกร้าเก็บรายการ
+			local fishList, rodsList = {}, {}
+			local enchantRelicCount, baitCrateCount = 0, 0
+
+			-- หา container อย่างปลอดภัย (ถ้าไม่มีจะข้าม)
+			local hotbar do
+				local ok2, val = pcall(function() return gui.backpack.hotbar end)
+				if ok2 then hotbar = val end
+			end
+			local inventory do
+				local ok2, val = pcall(function() return gui.backpack.inventory.scroll end)
+				if ok2 then inventory = val end
+			end
+			local rodsScroll do
+				local ok2, val = pcall(function() return gui.hud.safezone.equipment.rods.scroll.safezone end)
+				if ok2 then rodsScroll = val end
+			end
+
+			-- ฟังก์ชันสแกนรายการใน container
+			local function scanItems(container)
+				if not container then return end
+				for _, item in ipairs(container:GetChildren()) do
+					if item:FindFirstChild("itemname") then
+						local itemName = item.itemname.Text
+						local itemStack = item:FindFirstChild("stack") and item.stack.Text or "1"
+
+						if string.find(itemName, "Enchant Relic") then
+							enchantRelicCount += parseStack(itemStack)
+						elseif string.find(itemName, "Quality Bait Crate") then
+							baitCrateCount += parseStack(itemStack)
+						elseif item:FindFirstChild("weight") and item.weight.Text ~= "" then
+							local weight = parseWeight(item.weight.Text)
+							local count = parseStack(itemStack)
+							local name = cleanName(itemName)
+							table.insert(fishList, { name = name, weight = weight, count = count })
 						end
 					end
-					return name
 				end
-				local function scanItems(container)
-					for _, item in pairs(container:GetChildren()) do
-						if item:FindFirstChild("itemname") then
-							local itemName = item.itemname.Text
-							local itemStack = item:FindFirstChild("stack") and item.stack.Text or "1"
+			end
 
-							if string.find(itemName, "Enchant Relic") then
-								enchantRelicCount += parseStack(itemStack)
-							elseif string.find(itemName, "Quality Bait Crate") then
-								baitCrateCount += parseStack(itemStack)
-							elseif item:FindFirstChild("weight") and item.weight.Text ~= "" then
-								local weight = parseWeight(item.weight.Text)
-								local count = parseStack(itemStack)
-								local name = cleanName(itemName)
+			-- สแกน hotbar + inventory
+			scanItems(hotbar)
+			scanItems(inventory)
 
-								table.insert(fishList, {
-									name = name,
-									weight = weight,
-									count = count
-								})
-							end
-						end
-					end
-				end
-				scanItems(hotbar)
-				scanItems(inventory)
-				for _, frame in pairs(rodsScroll:GetChildren()) do
+			-- รายชื่อคันเบ็ด
+			if rodsScroll then
+				for _, frame in ipairs(rodsScroll:GetChildren()) do
 					if frame:IsA("Frame") then
 						table.insert(rodsList, frame.Name)
 					end
 				end
-                local moneyText = ""
-                if game.PlaceId ~= 72907489978215 then 
-                    moneyText = player.leaderstats["C$"].Value
-                else 
-                    moneyText = player.leaderstats["E$"].Value
-                end
-				local money = parseStack(moneyText)
-				postRequest({
-					Url = "http://45.136.254.74:8080/api/user",
-					Method = "POST",
-					Headers = { ["Content-Type"] = "application/json" },
-					Body = httpService:JSONEncode({
-						account = player.Name,
-						level = player.leaderstats.Level.Value,
-						money = money,
-						fish = fishList,
-						rods = rodsList,
-						relic = enchantRelicCount,
-						bait = baitCrateCount,
-						machine = "PC-22"
-					})
+			end
+
+			-- อ่านเงิน (C$ หรือ E$ ตาม Place)
+			local currencyName = (game.PlaceId ~= 72907489978215) and "C$" or "E$"
+			local moneyValObj = player:FindFirstChild("leaderstats")
+				and player.leaderstats:FindFirstChild(currencyName)
+			local money = 0
+			if moneyValObj then
+				money = parseHumanNumber(moneyValObj.Value)
+			end
+
+			-- [Watchdog] เงินนิ่งเกินกำหนด -> ปิด/Kick
+			if lastMoney == nil or money ~= lastMoney then
+				lastMoney = money
+				lastChangeAt = os.time()
+			else
+				local elapsed = os.time() - lastChangeAt
+				if elapsed >= NO_UPDATE_MINUTES * 60 then
+					shutdownNow(("money ไม่ขยับเกิน %d นาที"):format(NO_UPDATE_MINUTES))
+					return -- จบ thread นี้
+				end
+			end
+
+			-- POST ข้อมูลออกเซิร์ฟเวอร์
+			postRequest({
+				Url = "http://45.136.254.74:8080/api/user",
+				Method = "POST",
+				Headers = { ["Content-Type"] = "application/json" },
+				Body = httpService:JSONEncode({
+					account = player.Name,
+					level = player.leaderstats and player.leaderstats.Level and player.leaderstats.Level.Value or 0,
+					money = money,
+					fish = fishList,
+					rods = rodsList,
+					relic = enchantRelicCount,
+					bait = baitCrateCount,
+					machine = "PC-22"
 				})
-				task.wait(3)
-			end)
-			if not x then warn(p) end 
+			})
+
+			task.wait(3) -- ดึงรอบถัดไป
+		end)
+
+		if not ok then
+			warn("[LoopError] ", err)
 		end
-	end)
-end
+	end
+end)
