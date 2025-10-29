@@ -135,7 +135,7 @@ spawnFn(function()
         if not ok then
             warn("[LoopError] ", err)
         end
-		break
+		
         -- ไม่มี break ตรงนี้ เพื่อให้ลูปทำงานตลอด
     end
 end)
