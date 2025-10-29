@@ -1,0 +1,141 @@
+-- ✅ พร้อมรัน: Watchdog เงินนิ่ง 15 นาที + เก็บข้อมูล + เขียนไฟล์/พร้อมต่อยอด POST
+
+repeat task.wait() until game:IsLoaded() and game.CreatorId == 7381705
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- รอ PlayerGui.loading ได้ไม่เกิน 30 วินาที
+do
+    local t0 = os.time()
+    while true do
+        local ok, ready = pcall(function()
+            local gui = player and player.PlayerGui
+            return gui and gui.loading and (gui.loading.Enabled == false)
+        end)
+        if ok and ready then break end
+        if os.time() - t0 > 30 then break end
+        task.wait(0.5)
+    end
+end
+
+-- ====== ตั้งค่า environment ======
+local waitFn = task.wait
+local spawnFn = task.spawn
+local httpService = game:GetService("HttpService")
+local postRequest = getgenv().request or function(...) return ... end
+local getrenvFn = getgenv().getrenv or function(...) return ... end
+local env = getrenvFn()
+
+if type(env.task) == "table" and typeof(env.task.wait) == "function" then
+    waitFn = env.task.wait
+end
+if type(env.task) == "table" and typeof(env.task.spawn) == "function" then
+    spawnFn = env.task.spawn
+end
+
+-- ====== Utils ======
+local function parseHumanNumber(v) -- รองรับ 12.5K / 3.2M / 1B / ตัวเลขตรง ๆ
+    if typeof(v) == "number" then return v end
+    local s = tostring(v or ""):upper()
+    local num = s:match("[+-]?%d*%.?%d+")
+    if not num then return tonumber(s) or 0 end
+    num = tonumber(num)
+    if s:find("K", 1, true) then num = num * 1e3 end
+    if s:find("M", 1, true) then num = num * 1e6 end
+    if s:find("B", 1, true) then num = num * 1e9 end
+    return math.floor(num + 0.5)
+end
+
+local function safeWriteJSON(path, tbl)
+    local okEnc, encoded = pcall(function() return httpService:JSONEncode(tbl) end)
+    if not okEnc then
+        warn("[JSONEncodeError] ", encoded)
+        return
+    end
+    local okWrite, err = pcall(function() writefile(path, encoded) end)
+    if not okWrite then
+        warn("[WriteFileError] ", err)
+    end
+end
+
+-- ====== [Watchdog] เงินไม่ขยับเกิน X นาที -> ปิดเกม/Kick ======
+local NO_UPDATE_MINUTES = 15
+local lastMoney = nil
+local lastChangeAt = os.time()
+
+local function shutdownNow(reason)
+    warn("[AutoShutdown] " .. tostring(reason))
+    pcall(function() game:Shutdown() end)
+    pcall(function() Players.LocalPlayer:Kick(tostring(reason)) end)
+end
+
+-- ====== Main Loop ======
+spawnFn(function()
+    while true do
+        waitFn(3)
+
+        local ok, err = pcall(function()
+            local gui = player.PlayerGui
+
+            -- เตรียมตะกร้าข้อมูล
+            local rodsList = {}
+
+            -- หา container อย่างปลอดภัย (ถ้าไม่มีจะข้าม)
+            local rodsScroll do
+                local ok2, val = pcall(function()
+                    return gui.hud.safezone.equipment.rods.scroll.safezone
+                end)
+                if ok2 then rodsScroll = val end
+            end
+
+            -- รายชื่อคันเบ็ด
+            if rodsScroll then
+                for _, frame in ipairs(rodsScroll:GetChildren()) do
+                    if frame:IsA("Frame") then
+                        table.insert(rodsList, frame.Name)
+                    end
+                end
+            end
+
+            -- อ่านเงิน (C$ หรือ E$ ตาม Place)
+            local currencyName = (game.PlaceId ~= 72907489978215) and "C$" or "E$"
+            local moneyValObj = player:FindFirstChild("leaderstats")
+                and player.leaderstats:FindFirstChild(currencyName)
+            local money = 0
+            if moneyValObj then
+                money = parseHumanNumber(moneyValObj.Value)
+            end
+
+            -- Watchdog เงินนิ่ง
+            if lastMoney == nil or money ~= lastMoney then
+                lastMoney = money
+                lastChangeAt = os.time()
+            else
+                local elapsed = os.time() - lastChangeAt
+                if elapsed >= NO_UPDATE_MINUTES * 60 then
+                    shutdownNow(("money ไม่ขยับเกิน %d นาที"):format(NO_UPDATE_MINUTES))
+                    return -- ออกจากรอบนี้ (thread จะยังคงอยู่ แต่จะถูกเตะ/ปิดไปแล้ว)
+                end
+            end
+
+            -- บันทึกไฟล์ JSON (พร้อมเวลาปัจจุบันแบบ UTC)
+            local now = os.time()
+            safeWriteJSON("Log_Fisch.json", {
+                username = player.Name,
+				        level = player.leaderstats and player.leaderstats.Level and player.leaderstats.Level.Value or 0,
+                money     = money,
+                rods      = rodsList,
+                time      = os.date("!%Y-%m-%dT%H:%M:%SZ", now),
+            })
+
+            -- TODO: ถ้าจะ POST ออกเว็บ ให้ใช้ postRequest(encoded) ตรงนี้ต่อได้
+        end)
+
+        if not ok then
+            warn("[LoopError] ", err)
+        end
+		break
+        -- ไม่มี break ตรงนี้ เพื่อให้ลูปทำงานตลอด
+    end
+end)
