@@ -59,16 +59,6 @@ local function safeWriteJSON(path, tbl)
     end
 end
 
--- ====== [Watchdog] เงินไม่ขยับเกิน X นาที -> ปิดเกม/Kick ======
-local NO_UPDATE_MINUTES = 15
-local lastMoney = nil
-local lastChangeAt = os.time()
-
-local function shutdownNow(reason)
-    warn("[AutoShutdown] " .. tostring(reason))
-    pcall(function() game:Shutdown() end)
-    pcall(function() Players.LocalPlayer:Kick(tostring(reason)) end)
-end
 
 -- ====== Main Loop ======
 spawnFn(function()
@@ -105,18 +95,6 @@ spawnFn(function()
             local money = 0
             if moneyValObj then
                 money = parseHumanNumber(moneyValObj.Value)
-            end
-
-            -- Watchdog เงินนิ่ง
-            if lastMoney == nil or money ~= lastMoney then
-                lastMoney = money
-                lastChangeAt = os.time()
-            else
-                local elapsed = os.time() - lastChangeAt
-                if elapsed >= NO_UPDATE_MINUTES * 60 then
-                    shutdownNow(("money ไม่ขยับเกิน %d นาที"):format(NO_UPDATE_MINUTES))
-                    return -- ออกจากรอบนี้ (thread จะยังคงอยู่ แต่จะถูกเตะ/ปิดไปแล้ว)
-                end
             end
 
             -- บันทึกไฟล์ JSON (พร้อมเวลาปัจจุบันแบบ UTC)
