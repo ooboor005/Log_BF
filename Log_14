@@ -63,7 +63,7 @@ end
 -- ====== Main Loop ======
 spawnFn(function()
     while true do
-        waitFn(3)
+        waitFn(15)
 
         local ok, err = pcall(function()
             local gui = player.PlayerGui
