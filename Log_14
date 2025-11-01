@@ -164,7 +164,7 @@ spawnFn(function()
 				})
 			})
 
-			task.wait(3) -- ดึงรอบถัดไป
+			task.wait(5) -- ดึงรอบถัดไป
 		end)
 
 		if not ok then
