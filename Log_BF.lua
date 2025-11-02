@@ -19,11 +19,11 @@ function getLevel()
 end
 function getWorld() 
 	local placeId = game.PlaceId
-	if placeId == 2753915549 then
+	if placeId == 2753915549  then
 		return 1
-	elseif placeId == 4442272183 then
+	elseif placeId == 4442272183 or placeId == 79091703265657 then
 		return 2
-	elseif placeId == 7449423635 then
+	elseif placeId == 7449423635 or placeId == 100117331123089 then
 		return 3
 	end
 end
@@ -222,6 +222,7 @@ end
 function checkDoor()
     return game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer("CheckTempleDoor")
 end
+
 
 function sendRequest()
     local res = request({
