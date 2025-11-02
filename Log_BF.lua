@@ -26,6 +26,7 @@ function getWorld()
 	elseif placeId == 7449423635 or placeId == 100117331123089 then
 		return 3
 	end
+	return 0
 end
 
 function getItem(itemName) 
