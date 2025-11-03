@@ -89,13 +89,16 @@ spawnFn(function()
             end
 
             -- อ่านเงิน (C$ หรือ E$ ตาม Place)
-            local currencyName = (game.PlaceId ~= 72907489978215) and "C$" or "E$"
-            local moneyValObj = player:FindFirstChild("leaderstats")
-                and player.leaderstats:FindFirstChild(currencyName)
-            local money = 0
-            if moneyValObj then
-                money = parseHumanNumber(moneyValObj.Value)
-            end
+            -- local currencyName = (game.PlaceId ~= 72907489978215) and "C$" or "E$"
+            -- local moneyValObj = player:FindFirstChild("leaderstats")
+            --     and player.leaderstats:FindFirstChild(currencyName)
+            -- local money = 0
+            -- if moneyValObj then
+            --     money = parseHumanNumber(moneyValObj.Value)
+            -- end
+            
+            local s = tostring(game:GetService("Players").LocalPlayer.leaderstats["C$"].Value)
+            local money = tonumber( (s:gsub("[^%d]", "")) )  -- เหลือเฉพาะตัวเลข -> 18648263
 
             -- บันทึกไฟล์ JSON (พร้อมเวลาปัจจุบันแบบ UTC)
             local now = os.time()
