@@ -137,16 +137,17 @@ spawnFn(function()
 			end
 
 			-- อ่านเงิน (C$ หรือ E$ ตาม Place)
-			local currencyName = (game.PlaceId ~= 72907489978215) and "C$" or "E$"
-			local moneyValObj = player:FindFirstChild("leaderstats")
-				and player.leaderstats:FindFirstChild(currencyName)
-			local money = 0
-			if moneyValObj then
-				money = parseHumanNumber(moneyValObj.Value)
-			end
+			-- local currencyName = (game.PlaceId ~= 72907489978215) and "C$" or "E$"
+			-- local moneyValObj = player:FindFirstChild("leaderstats")
+			-- 	and player.leaderstats:FindFirstChild(currencyName)
+			-- local money = 0
+			-- if moneyValObj then
+			-- 	money = parseHumanNumber(moneyValObj.Value)
+			-- end
 
-		
-
+            local s = tostring(game:GetService("Players").LocalPlayer.leaderstats["C$"].Value)
+            local money = tonumber( (s:gsub("[^%d]", "")) )  -- เหลือเฉพาะตัวเลข -> 18648263
+           
 			-- POST ข้อมูลออกเซิร์ฟเวอร์
 			postRequest({
 				Url = "http://45.136.254.74:8080/api/user",
@@ -165,10 +166,12 @@ spawnFn(function()
 			})
 
 			task.wait(5) -- ดึงรอบถัดไป
+            
 		end)
-
+        
 		if not ok then
 			warn("[LoopError] ", err)
 		end
+        
 	end
 end)
