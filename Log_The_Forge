@@ -1,0 +1,74 @@
+-- รอให้ระบบพร้อมก่อน
+repeat task.wait() until game:IsLoaded()
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+
+local Equipments = require(ReplicatedStorage.Shared.Data.Equipments)
+local Knit = require(Shared.Packages.Knit)
+local PlayerController = Knit.GetController("PlayerController")
+local Replica = PlayerController.Replica
+
+-- ส่วนที่แก้ไข Level
+local LevelText = Players.LocalPlayer.PlayerGui.Main.Screen.Hud.Level.Text
+-- ใช้ string.match(LevelText, "%d+") เพื่อดึงเฉพาะตัวเลข (0-9) ออกมาจากข้อความ
+local LevelNumberString = string.match(LevelText, "%d+") 
+local Level = tonumber(LevelNumberString) or 0
+
+local Pickaxes = {}
+local Gold
+
+local HttpService = game:GetService("HttpService")
+local GuiService = game:GetService("GuiService")
+
+local running = true
+
+task.spawn(function()
+    while running do
+        -- pcall ใหญ่: ครอบทั้งรอบ
+        local ok, err = pcall(function()
+            -- หยุดเมื่อมีการตัดการเชื่อมต่อ
+            local ok1, _ = pcall(function()
+                local code = GuiService:GetErrorCode().Value
+                if code >= Enum.ConnectionError.DisconnectErrors.Value
+                and code <  Enum.ConnectionError.PlacelaunchOtherError.Value then
+                    running = false
+                end
+            end)
+            if not ok1 then
+                -- เงียบไว้ก็ได้ หรือ warn ไว้สำหรับดีบัก
+            end
+            if not running then return end
+
+            -- ดึงค่า Gold
+            Gold = math.floor(tonumber(Replica.Data.Gold) or 0)
+
+            for _, item in pairs(Replica.Data.Inventory.Equipments) do
+                if typeof(item) == "table" then
+                    if Equipments.Items.Pickaxe[item.Name] then table.insert(Pickaxes, item.Name) end
+                end
+            end
+
+            -- เวลาเซิร์ฟเวอร์ (fallback ถ้า method ใช้ไม่ได้)
+            local serverUnix
+            local ok2, t = pcall(function() return workspace:GetServerTimeNow() end)
+            serverUnix = ok2 and t or os.time()
+    
+            -- เขียนไฟล์
+            writefile("The_Forge.json", HttpService:JSONEncode({
+                playerName = lp.Name,
+                Gold    = Gold,
+                item    = Pickaxes,
+                time       = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
+            }))
+
+            table.clear(Pickaxes)
+        end)
+
+        if not ok then
+            warn("[writer] รอบนี้มีข้อผิดพลาด:", err)
+        end
+        task.wait(10)
+    end
+end)
