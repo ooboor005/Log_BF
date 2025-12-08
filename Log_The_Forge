@@ -1,3 +1,4 @@
+
 -- รอให้ระบบพร้อมก่อน
 repeat task.wait() until game:IsLoaded()
 local Players = game:GetService("Players")
@@ -10,11 +11,7 @@ local Knit = require(Shared.Packages.Knit)
 local PlayerController = Knit.GetController("PlayerController")
 local Replica = PlayerController.Replica
 
--- ส่วนที่แก้ไข Level
-local LevelText = Players.LocalPlayer.PlayerGui.Main.Screen.Hud.Level.Text
--- ใช้ string.match(LevelText, "%d+") เพื่อดึงเฉพาะตัวเลข (0-9) ออกมาจากข้อความ
-local LevelNumberString = string.match(LevelText, "%d+") 
-local Level = tonumber(LevelNumberString) or 0
+local PlayerGui = lp:WaitForChild("PlayerGui")
 
 local Pickaxes = {}
 local Gold
@@ -41,6 +38,14 @@ task.spawn(function()
             end
             if not running then return end
 
+            -- ส่วนที่แก้ไข Level
+            local LevelText = Players.LocalPlayer.PlayerGui.Main.Screen.Hud.Level.Text
+            -- ใช้ string.match(LevelText, "%d+") เพื่อดึงเฉพาะตัวเลข (0-9) ออกมาจากข้อความ
+            local LevelNumberString = string.match(LevelText, "%d+") 
+            local Level = tonumber(LevelNumberString) or 0
+
+            local CurrentRace = PlayerGui.Sell.RaceUI.StatMain.Slots.SlotTemplate.CurrentRace.Text
+            local CleanRace = CurrentRace:gsub("~", ""):gsub("%s+", "")
             -- ดึงค่า Gold
             Gold = math.floor(tonumber(Replica.Data.Gold) or 0)
 
@@ -58,8 +63,10 @@ task.spawn(function()
             -- เขียนไฟล์
             writefile("The_Forge.json", HttpService:JSONEncode({
                 playerName = lp.Name,
+                Level = Level,
                 Gold    = Gold,
                 item    = Pickaxes,
+                CurrentRace = CleanRace,
                 time       = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
             }))
 
@@ -70,5 +77,6 @@ task.spawn(function()
             warn("[writer] รอบนี้มีข้อผิดพลาด:", err)
         end
         task.wait(10)
+        
     end
 end)
