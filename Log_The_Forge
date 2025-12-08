@@ -39,7 +39,7 @@ task.spawn(function()
             if not running then return end
 
             -- ส่วนที่แก้ไข Level
-            local LevelText = Players.LocalPlayer.PlayerGui.Main.Screen.Hud.Level.Text
+            local LevelText = lp.PlayerGui.Main.Screen.Hud.Level.Text
             -- ใช้ string.match(LevelText, "%d+") เพื่อดึงเฉพาะตัวเลข (0-9) ออกมาจากข้อความ
             local LevelNumberString = string.match(LevelText, "%d+") 
             local Level = tonumber(LevelNumberString) or 0
@@ -48,7 +48,9 @@ task.spawn(function()
             local CleanRace = CurrentRace:gsub("~", ""):gsub("%s+", "")
             -- ดึงค่า Gold
             Gold = math.floor(tonumber(Replica.Data.Gold) or 0)
-
+            local Reroll_Text = PlayerGui.Sell.RaceUI.Reroll.Spins.Text
+            local Reroll = Reroll_Text:gsub("Spins:", ""):gsub("%s+", "")
+            
             for _, item in pairs(Replica.Data.Inventory.Equipments) do
                 if typeof(item) == "table" then
                     if Equipments.Items.Pickaxe[item.Name] then table.insert(Pickaxes, item.Name) end
@@ -67,7 +69,8 @@ task.spawn(function()
                 Gold    = Gold,
                 item    = Pickaxes,
                 CurrentRace = CleanRace,
-                time       = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
+                Reroll = Reroll,
+                time   = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
             }))
 
             table.clear(Pickaxes)
