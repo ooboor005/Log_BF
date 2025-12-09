@@ -63,7 +63,7 @@ task.spawn(function()
             serverUnix = ok2 and t or os.time()
     
             -- เขียนไฟล์
-            writefile("The_Forge.json", HttpService:JSONEncode({
+            writefile("Log_The_Forge.json", HttpService:JSONEncode({
                 playerName = lp.Name,
                 Level = Level,
                 Gold    = Gold,
