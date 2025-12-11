@@ -79,7 +79,7 @@ task.spawn(function()
         if not ok then
             warn("[writer] รอบนี้มีข้อผิดพลาด:", err)
         end
-        task.wait(10)
+        task.wait(3)
         
     end
 end)
