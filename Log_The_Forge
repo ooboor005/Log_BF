@@ -23,6 +23,8 @@ local running = true
 
 task.spawn(function()
     while running do
+        table.clear(Pickaxes)
+
         -- pcall ใหญ่: ครอบทั้งรอบ
         local ok, err = pcall(function()
             -- หยุดเมื่อมีการตัดการเชื่อมต่อ
