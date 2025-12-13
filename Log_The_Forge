@@ -1,3 +1,51 @@
+-- LocalScript (ใส่ใน StarterPlayer > StarterPlayerScripts)
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.Name = "TheForgeGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Frame หลัก
+local frame = Instance.new("Frame")
+frame.Size = UDim2.fromScale(0.25, 0.12)
+frame.Position = UDim2.fromScale(0.5, 0.15)
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.Parent = gui
+
+-- มุมโค้ง
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 16)
+corner.Parent = frame
+
+-- ข้อความ
+local title = Instance.new("TextLabel")
+title.Size = UDim2.fromScale(1, 1)
+title.BackgroundTransparency = 1
+title.Text = "The Forge"
+title.Font = Enum.Font.GothamBold
+title.TextScaled = true
+title.TextColor3 = Color3.fromRGB(255, 220, 120)
+title.Parent = frame
+
+-- เส้นขอบ
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 3
+stroke.Parent = frame
+
+-- สีเหลื่อม (Gradient สีเหลือง)
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 160)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 200, 60)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 240, 140)),
+}
+gradient.Parent = stroke
+
 
 -- รอให้ระบบพร้อมก่อน
 repeat task.wait() until game:IsLoaded()
