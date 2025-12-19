@@ -9,6 +9,15 @@ local GuiService = game:GetService("GuiService")
 
 local running = true
 local Class_name = {}
+local Class_set = {}   -- << ป้องกันชื่อซ้ำเพิ่มแค่ตรงนี้
+
+-- ฟังก์ชันเพิ่มชื่อแบบไม่ซ้ำ
+local function addClass(name)
+    if not Class_set[name] then
+        table.insert(Class_name, name)
+        Class_set[name] = true
+    end
+end
 
 task.spawn(function()
     while running do
@@ -22,45 +31,39 @@ task.spawn(function()
                     running = false
                 end
             end)
-            if not ok1 then
-                -- เงียบไว้ก็ได้ หรือ warn ไว้สำหรับดีบัก
-            end
+            if not ok1 then end
             if not running then return end
 
-            -- ดึงค่า Diamonds (มี default กัน nil)
             local lp = Players.LocalPlayer
             local diamonds = lp:GetAttribute("Diamonds")
             if diamonds == nil then diamonds = 0 end
 
-            -- เวลาเซิร์ฟเวอร์ (fallback ถ้า method ใช้ไม่ได้)
             local serverUnix
             local ok2, t = pcall(function() return workspace:GetServerTimeNow() end)
             serverUnix = ok2 and t or os.time()
 
+            -- ดึงข้อมูล Class
+            if game.PlaceId == 126509999114328 then
+                for _, obj in ipairs(Inventory:GetChildren()) do
+                    if tostring(obj.Name) == "Laser Cannon" then
+                        addClass("Cyborg")   -- << ใช้ addClass
+                    end
+                end
+            end
 
-            -- ดึงข้อมูล Cass
+            if game.PlaceId ~= 126509999114328 then
+                for _, obj in ipairs(ClassProgress:GetDescendants()) do
+                    if obj:IsA("Folder") then
+                        addClass(obj.Name)   -- << ใช้ addClass
+                    end
+                end
+            end
 
-			if game.PlaceId == 126509999114328 then
-				for _, obj in ipairs(Inventory:GetChildren()) do
-					if tostring(obj.Name) == "Laser Cannon" then
-						table.insert(Class_name, "Cyborg")
-					end
-				end
-			end
-
-			if game.PlaceId ~=  126509999114328 then
-				for _, obj in ipairs(ClassProgress:GetDescendants()) do
-					if obj:IsA("Folder") then
-						table.insert(Class_name, obj.Name)
-					end
-				end
-			end
-			
             -- เขียนไฟล์
             writefile("Log_99.json", HttpService:JSONEncode({
                 playerName = lp.Name,
                 Diamond    = diamonds,
-                Class    	= Class_name,
+                Class      = Class_name,
                 time       = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
             }))
         end)
