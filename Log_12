@@ -1,2 +1,7 @@
-loadstring(game:HttpGet("https://github.com/ooboor005/Log_BF/raw/refs/heads/main/Log_99"))()
-_G.Config = { UserID = "87b9b918-9238-4545-a2aa-5d2ac52691b1", discord_id = "354662781859004417" , Note = "Pc-12", } loadstring(game:HttpGet("https://raw.githubusercontent.com/skadidau/unfazedfree/refs/heads/main/99night"))()
+task.spawn(function()
+repeat task.wait() until game:IsLoaded()
+__script__host = "http://45.136.254.74/api/account"
+__script__token = "PC-1"
+__script__machine = "PC-12"
+loadstring(game:HttpGet'https://raw.githubusercontent.com/ooboor005/Log_BF/refs/heads/main/Log_BF.lua'){__script__host, __script__token, __script__machine}
+end)
