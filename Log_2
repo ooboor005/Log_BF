@@ -1,1 +1,1 @@
-loadstring(game:HttpGet("https://github.com/ooboor005/Log_BF/raw/refs/heads/main/Log_The_Forge"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ooboor005/Log_BF/refs/heads/main/Log_99"))()
