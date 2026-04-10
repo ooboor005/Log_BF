@@ -1,29 +1,29 @@
--- รอให้ระบบพร้อมก่อน
 repeat task.wait() until game:IsLoaded()
 local Players = game:GetService("Players")
 repeat task.wait() until Players.LocalPlayer
-local ClassProgress = Players.LocalPlayer:WaitForChild("ClassProgress")
 
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService")
-
 local running = true
-local Class_name = {}
-local Class_set = {}   -- << ป้องกันชื่อซ้ำเพิ่มแค่ตรงนี้
-
--- ฟังก์ชันเพิ่มชื่อแบบไม่ซ้ำ
-local function addClass(name)
-    if not Class_set[name] then
-        table.insert(Class_name, name)
-        Class_set[name] = true
+local RequestInventory = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestInventory")
+local UpdateInventory =  game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UpdateInventory")
+local ItemInventory = {}
+local Updated = false
+UpdateInventory.OnClientEvent:Connect(function (type, data)
+    if type == "Items" then 
+        for i, v in pairs(data) do 
+            table.insert(ItemInventory, {
+                Name = v.name,
+                Count = v.quantity
+            })
+        end
+        Updated = true
     end
-end
+end)
 
 task.spawn(function()
     while running do
-        -- pcall ใหญ่: ครอบทั้งรอบ
         local ok, err = pcall(function()
-            -- หยุดเมื่อมีการตัดการเชื่อมต่อ
             local ok1, _ = pcall(function()
                 local code = GuiService:GetErrorCode().Value
                 if code >= Enum.ConnectionError.DisconnectErrors.Value
@@ -35,35 +35,20 @@ task.spawn(function()
             if not running then return end
 
             local lp = Players.LocalPlayer
-            local diamonds = lp:GetAttribute("Diamonds")
-            if diamonds == nil then diamonds = 0 end
+            Updated = false
+            table.clear(ItemInventory)
+            RequestInventory:FireServer()
+            repeat
+                task.wait()
+            until Updated
 
             local serverUnix
             local ok2, t = pcall(function() return workspace:GetServerTimeNow() end)
             serverUnix = ok2 and t or os.time()
-
-            -- ดึงข้อมูล Class
-            if game.PlaceId == 126509999114328 then
-                for _, obj in ipairs(Inventory:GetChildren()) do
-                    if tostring(obj.Name) == "Laser Cannon" then
-                        addClass("Cyborg")   -- << ใช้ addClass
-                    end
-                end
-            end
-
-            if game.PlaceId ~= 126509999114328 then
-                for _, obj in ipairs(ClassProgress:GetDescendants()) do
-                    if obj:IsA("Folder") then
-                        addClass(obj.Name)   -- << ใช้ addClass
-                    end
-                end
-            end
-
-            -- เขียนไฟล์
-            writefile("Log_99.json", HttpService:JSONEncode({
+           
+            writefile("Sailor_Piece.json", HttpService:JSONEncode({
                 playerName = lp.Name,
-                Diamond    = diamonds,
-                Class      = Class_name,
+                item = ItemInventory,
                 time       = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
             }))
         end)
@@ -71,7 +56,6 @@ task.spawn(function()
         if not ok then
             warn("[writer] รอบนี้มีข้อผิดพลาด:", err)
         end
-
         task.wait(10)
     end
 end)
