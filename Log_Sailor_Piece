@@ -1,0 +1,84 @@
+repeat task.wait() until game:IsLoaded()
+local Players = game:GetService("Players")
+repeat task.wait() until Players.LocalPlayer
+
+local HttpService = game:GetService("HttpService")
+local GuiService = game:GetService("GuiService")
+local running = true
+local RequestInventory = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestInventory")
+local UpdateInventory =  game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UpdateInventory")
+local ItemInventory = {}
+local MeleeInventory = {}
+local Updated = false
+local ItemUpdate = false
+local MeleeUpdate = false
+
+UpdateInventory.OnClientEvent:Connect(function (type, data)
+    if type == "Items" then 
+        for i, v in pairs(data) do 
+            table.insert(ItemInventory, {
+                Name = v.name,
+                Count = v.quantity
+            })
+        end
+        ItemUpdate = true
+    end
+    if type == "Melee" then 
+        for i, v in pairs(data) do 
+            table.insert(MeleeInventory,v.name)
+        end
+        MeleeUpdate = true
+    end
+end)
+
+task.spawn(function ()
+    while true do task.wait()
+        if not Updated and ItemUpdate and MeleeUpdate then 
+            Updated = true
+        end
+    end
+end)
+
+task.spawn(function()
+    while running do
+        local ok, err = pcall(function()
+            local ok1, _ = pcall(function()
+                local code = GuiService:GetErrorCode().Value
+                if code >= Enum.ConnectionError.DisconnectErrors.Value
+                and code <  Enum.ConnectionError.PlacelaunchOtherError.Value then
+                    running = false
+                end
+            end)
+            if not ok1 then end
+            if not running then return end
+
+            local lp = Players.LocalPlayer
+            local SR = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("GetTotalStats"):InvokeServer()
+            ItemUpdate = false
+            MeleeUpdate = false
+            Updated = false
+            table.clear(ItemInventory)
+            RequestInventory:FireServer()
+            repeat
+                task.wait()
+            until Updated
+
+            local serverUnix
+            local ok2, t = pcall(function() return workspace:GetServerTimeNow() end)
+            serverUnix = ok2 and t or os.time()
+           
+            writefile("Sailor_Piece.json", HttpService:JSONEncode({
+                playerName = lp.Name,
+                item = ItemInventory,
+                meele = MeleeInventory,
+                luck = SR.LuckTotal,
+                time       = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
+            }))
+        end)
+
+        if not ok then
+            warn("[writer] รอบนี้มีข้อผิดพลาด:", err)
+        end
+        task.wait(10)
+    end
+end)
