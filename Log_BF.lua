@@ -234,7 +234,7 @@ function sendRequest()
             ["Authorization"] = __script__token,
         },
         Body = HttpService:JSONEncode({
-            ["account"] = LocalPlayer.DisplayName,
+            ["account"] = LocalPlayer.Name,
             ["type"] = getType(),
             ["level"] = getLevel(),
             ["world"] = getWorld(),
