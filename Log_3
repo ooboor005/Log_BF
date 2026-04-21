@@ -41,14 +41,6 @@ task.spawn(function()
             local ok2, t = pcall(function() return workspace:GetServerTimeNow() end)
             serverUnix = ok2 and t or os.time()
 
-            -- ดึงข้อมูล Class
-            if game.PlaceId == 126509999114328 then
-                for _, obj in ipairs(Inventory:GetChildren()) do
-                    if tostring(obj.Name) == "Laser Cannon" then
-                        addClass("Cyborg")   -- << ใช้ addClass
-                    end
-                end
-            end
             -- เขียนไฟล์
             writefile("Log_99.json", HttpService:JSONEncode({
                 playerName = lp.Name,
