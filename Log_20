@@ -1,1 +1,61 @@
-loadstring(game:HttpGet("https://github.com/ooboor005/Log_BF/raw/refs/heads/main/Log_Sailor_Piece"))()
+-- รอให้ระบบพร้อมก่อน
+task.wait(60)
+repeat task.wait() until game:IsLoaded()
+local Players = game:GetService("Players")
+repeat task.wait() until Players.LocalPlayer
+
+local HttpService = game:GetService("HttpService")
+local GuiService = game:GetService("GuiService")
+
+local running = true
+local Class_name = {}
+local Class_set = {}   -- << ป้องกันชื่อซ้ำเพิ่มแค่ตรงนี้
+
+-- ฟังก์ชันเพิ่มชื่อแบบไม่ซ้ำ
+local function addClass(name)
+    if not Class_set[name] then
+        table.insert(Class_name, name)
+        Class_set[name] = true
+    end
+end
+
+task.spawn(function()
+    while running do
+        -- pcall ใหญ่: ครอบทั้งรอบ
+        local ok, err = pcall(function()
+            -- หยุดเมื่อมีการตัดการเชื่อมต่อ
+            local ok1, _ = pcall(function()
+                local code = GuiService:GetErrorCode().Value
+                if code >= Enum.ConnectionError.DisconnectErrors.Value
+                and code <  Enum.ConnectionError.PlacelaunchOtherError.Value then
+                    running = false
+                end
+            end)
+            if not ok1 then end
+            if not running then return end
+
+            local lp = Players.LocalPlayer
+            local diamonds = lp:GetAttribute("Diamonds")
+            if diamonds == nil then diamonds = 0 end
+
+            local serverUnix
+            local ok2, t = pcall(function() return workspace:GetServerTimeNow() end)
+            serverUnix = ok2 and t or os.time()
+
+            -- เขียนไฟล์
+            writefile("Log_99.json", HttpService:JSONEncode({
+                playerName = lp.Name,
+                Diamond    = diamonds,
+                Class      = Class_name,
+                time       = os.date("!%Y-%m-%dT%H:%M:%SZ", serverUnix),
+            }))
+        end)
+
+        if not ok then
+            warn("[writer] รอบนี้มีข้อผิดพลาด:", err)
+        end
+ 
+        task.wait(10)
+        
+    end
+end)
