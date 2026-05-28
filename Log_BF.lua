@@ -177,7 +177,7 @@ function getType()
         table.insert(ReturnText, "Heart")
     end
 
-    if GodHuman == 1 then
+    if GodHuman == 1 and SanguineArt ~= 1 then
         local tool = LocalPlayer.Character:FindFirstChild("Godhuman") or LocalPlayer.Backpack:FindFirstChild("Godhuman")
         if tool then
             local level = tool:FindFirstChild("Level")
