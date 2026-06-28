@@ -5,6 +5,25 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
+local placeId = game.PlaceId
+
+if placeId ~= 2753915549
+	and placeId ~= 4442272183
+	and placeId ~= 79091703265657
+	and placeId ~= 7449423635
+	and placeId ~= 100117331123089 then
+
+	pcall(function()
+		game:Shutdown()
+	end)
+
+	pcall(function()
+		game:GetService("Players").LocalPlayer:Kick("Unknown PlaceId")
+	end)
+
+	return
+end
+
 local MeleeRequestList = {
     ["Death Step"] = "BuyDeathStep",
     ["Sharkman Karate"] = "BuySharkmanKarate",
