@@ -11,7 +11,8 @@ if placeId ~= 2753915549
 	and placeId ~= 4442272183
 	and placeId ~= 79091703265657
 	and placeId ~= 7449423635
-	and placeId ~= 100117331123089 then
+	and placeId ~= 100117331123089 
+	and placeId ~= 85211729168715 then
 
 	pcall(function()
 		game:Shutdown()
@@ -38,7 +39,7 @@ function getLevel()
 end
 function getWorld() 
 	local placeId = game.PlaceId
-	if placeId == 2753915549  then
+	if placeId == 2753915549 or 85211729168715 then
 		return 1
 	elseif placeId == 4442272183 or placeId == 79091703265657 then
 		return 2
