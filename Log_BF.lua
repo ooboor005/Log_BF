@@ -1,9 +1,65 @@
 repeat task.wait() until game:GetService("Players").LocalPlayer
 repeat task.wait() until game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
 repeat task.wait() until (game.Players.LocalPlayer.Neutral == false) == true
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+
+local ItemReplicationService = require(ReplicatedStorage.ItemReplicationService)
+local ItemId = require(ReplicatedStorage.Economy.ItemId)
+local ItemConfig = require(ReplicatedStorage.ItemConfig)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+
+local function getInventory()
+    local Items = {}
+
+    for _, v in ipairs(ItemReplicationService:GetItems()) do
+        local itemId = v.ItemId
+        local entry = Items[itemId]
+
+        if not entry then
+            local dataResult = ItemId.getDataFromId(itemId) -- was called twice before
+            if dataResult:isOk() then
+                local ItemData = dataResult:unwrap()
+				local ItemConfigData = ItemConfig.match(itemId):unwrap()
+                local Type
+				local Rarity 
+
+                if ItemData.Type == "Accessory" or ItemData.Type == "Material" or ItemData.Type == "Title" then
+                    Type = ItemData.Type
+                elseif ItemData.Type == "Moveset" then
+                    Type = ItemConfigData.Moveset.Type
+                elseif ItemData.Type == "PhysicalMoveset" then
+                    Type = ItemConfigData.Inventory.Brackets[1]
+                else
+                    Type = ItemData.Type
+                end
+
+				if ItemConfigData.Quality and ItemConfigData.Quality.RarityValue then 
+					Rarity = ItemConfigData.Quality.RarityValue
+				end
+
+
+
+                entry = {
+                    Type = Type,
+                    Name = ItemData.StorageKey,
+                    ItemId = itemId,
+                    NetworkedUID = v.NetworkedUID,
+					Rarity = Rarity
+                }
+                Items[itemId] = entry
+            end
+        end
+
+        if entry then
+            entry[v.Key] = v.Value
+        end
+    end
+
+    return Items
+end
 
 local placeId = game.PlaceId
 
@@ -50,7 +106,7 @@ function getWorld()
 end
 
 function getItem(itemName) 
-    for i,v in pairs(game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("getInventory")) do
+    for i,v in pairs(getInventory()) do
         if type(v) == "table" then
             if v.Type == "Material" then
                 if v.Name == itemName then
@@ -127,7 +183,7 @@ end
 
 function getSword()
     local SwordList, RequestGetInvertory = {}, nil
-    RequestGetInvertory = game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("getInventory")
+    RequestGetInvertory = getInventory()
     for _, v in pairs(RequestGetInvertory) do 
         if v['Type'] == "Sword" then 
             if v['Rarity'] >= 3 then
@@ -140,7 +196,7 @@ end
 
 function GetFruitInU()
     local ReturnText = {}
-    for i,v in pairs(game:GetService("ReplicatedStorage").Remotes["CommF_"]:InvokeServer("getInventory")) do
+    for i,v in pairs(getInventory()) do
         if type(v) == "table" then
             if v ~= nil and v.Type == "Blox Fruit" then
                 if v.Value >= 100000  then
@@ -162,7 +218,7 @@ end
 
 function findItem(item) 
     local RequestgetInventory;
-    RequestgetInventory = game:GetService("ReplicatedStorage").Remotes["CommF_"]:InvokeServer("getInventory")
+    RequestgetInventory = getInventory()
     for i, __ in pairs(RequestgetInventory) do
         if __["Name"] == item then
             return true
@@ -225,17 +281,7 @@ function getType()
 end
 
 function getVK()
-	for i,v in pairs(game:GetService("ReplicatedStorage").Remotes["CommF_"]:InvokeServer("getInventoryWeapons")) do -- เช็คในกระเป๋า
-            for i1,v1 in pairs(v) do
-                if v1 == 'Valkyrie Helm' then
-                    return true
-                end
-            end
-        end
-     if game:GetService("Players").LocalPlayer.Backpack:FindFirstChild('Valkyrie Helm') or game:GetService("Players").LocalPlayer.Character:FindFirstChild('Valkyrie Helm') then
-           return true
-        end
-    return false
+	return findItem("Valkyrie Helm")
 end
 
 function getEvoTier()
@@ -265,7 +311,6 @@ end
 function checkDoor()
     return game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer("CheckTempleDoor")
 end
-
 
 function sendRequest()
     local res = request({
