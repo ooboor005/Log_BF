@@ -39,7 +39,7 @@ function getLevel()
 end
 function getWorld() 
 	local placeId = game.PlaceId
-	if placeId == 2753915549 or 85211729168715 then
+	if placeId == 2753915549 or placeId == 85211729168715 then
 		return 1
 	elseif placeId == 4442272183 or placeId == 79091703265657 then
 		return 2
