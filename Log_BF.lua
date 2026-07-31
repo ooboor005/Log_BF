@@ -198,7 +198,7 @@ function GetFruitInU()
     local ReturnText = {}
     for i,v in pairs(getInventory()) do
         if type(v) == "table" then
-            if v ~= nil and v.Type == "Blox Fruit" then
+            if v ~= nil and v.Type == "Fruits" then
                 if v.Value >= 100000  then
                     table.insert(ReturnText,string.split(v.Name,"-")[2])
                 end
