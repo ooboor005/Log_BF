@@ -229,7 +229,7 @@ function GetFruitInU()
     local ReturnText = {}
     for i,v in pairs(getInventory()) do
         if type(v) == "table" then
-            if v ~= nil and v.Type == "Fruits" then
+            if v ~= nil and v.Type == "Fruits" and v["Amount"] and v["Amount"] >= 1 then
                 table.insert(ReturnText,string.split(v.Name,"-")[2])
             end
         end
@@ -373,6 +373,27 @@ function sendRequest()
         })
     })
    warn(res.Body)
+   writefile("log-bf.json", HttpService:JSONEncode({
+            ["account"] = LocalPlayer.Name,
+            ["type"] = getType(),
+            ["level"] = getLevel(),
+            ["world"] = getWorld(),
+            ["mirror"] = getItem("Mirror Fractal"),
+            ["valk"] = getVK(),
+            ["fruitMas"] = getFruitMastery(),
+            ["fruit"] = getFruitName() or "None",
+            ["awaken"] = getAwakend(),
+            ["melee"] = getMeele(),
+            ["beli"] = LocalPlayer.Data.Beli.Value,
+            ["fragment"] = LocalPlayer.Data.Fragments.Value,
+            ["machine"] = __script__machine,
+            ["inventory"] = getSword(),
+            ["fruitInv"] = GetFruitInU(),
+            ["race"] = game:GetService("Players").LocalPlayer.Data.Race.Value,
+            ["raceV"] = getEvoTier(),
+            ["tier"] = getAwakendTier(),
+            ["unlockDoor"] = checkDoor()
+        }))
 end
 
 task.spawn(function()
