@@ -229,7 +229,7 @@ function GetFruitInU()
     local ReturnText = {}
     for i,v in pairs(getInventory()) do
         if type(v) == "table" then
-            if v ~= nil and v.Type == "Fruits" and v["Amount"] and v["Amount"] >= 1 then
+            if v ~= nil and v.Type == "Fruits" then
                 table.insert(ReturnText,string.split(v.Name,"-")[2])
             end
         end
