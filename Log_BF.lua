@@ -233,6 +233,7 @@ function GetFruitInU()
             end
         end
     end
+	warn(ReturnText, "Fruits Get")
     return ReturnText
 end
 
