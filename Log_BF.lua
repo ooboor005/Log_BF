@@ -233,7 +233,7 @@ function GetFruitInU()
             end
         end
     end
-	warn(ReturnText, "Fruits Get")
+	table.foreach(ReturnText, function(i,v) print(i,v, "Fruits Get") end)
     return ReturnText
 end
 
