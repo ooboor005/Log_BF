@@ -1,4 +1,3 @@
-
 repeat task.wait() until game:GetService("Players").LocalPlayer
 repeat task.wait() until game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
 repeat task.wait() until (game.Players.LocalPlayer.Neutral == false) == true
@@ -6,45 +5,14 @@ repeat task.wait() until (game.Players.LocalPlayer.Neutral == false) == true
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
-local ItemReplicationService = require(ReplicatedStorage.ItemReplicationService)
 local ItemId = require(ReplicatedStorage.Economy.ItemId)
 local ItemConfig = require(ReplicatedStorage.ItemConfig)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local function refreshAllCache()
-    local items = ItemReplicationService:GetItems()
-
-    local withUidIds, withUidUids = {}, {}
-    local withoutUidIds = {}
-    local seen = {}
-
-    for _, v in ipairs(items) do
-        local key = v.ItemId .. "_" ..  tostring(v.NetworkedUID)
-        if not seen[key] then
-            seen[key] = true
-            if v.NetworkedUID then
-                table.insert(withUidIds, v.ItemId)
-                table.insert(withUidUids, v.NetworkedUID)
-            else
-                table.insert(withoutUidIds, v.ItemId)
-            end
-        end
-    end
-
-    if #withUidIds > 0 then
-        ItemReplicationService:RefreshAsync(withUidIds, withUidUids)
-    end
-
-    if #withoutUidIds > 0 then
-        ItemReplicationService:RefreshAsync(withoutUidIds)
-    end
-end
-
 local function getInventory()
-	 refreshAllCache()
+    local ItemReplicationService = require(ReplicatedStorage.ItemReplicationService)
     local Items = {}
-
     for _, v in ipairs(ItemReplicationService:GetItems()) do
         local itemId = v.ItemId
         local entry = Items[itemId]
@@ -86,12 +54,12 @@ local function getInventory()
 
         if entry then
             entry[v.Key] = v.Value
+            Items[itemId] = entry
         end
     end
 
     return Items
 end
-
 local placeId = game.PlaceId
 
 if placeId ~= 2753915549
@@ -229,12 +197,11 @@ function GetFruitInU()
     local ReturnText = {}
     for i,v in pairs(getInventory()) do
         if type(v) == "table" then
-            if v ~= nil and v.Type == "Fruits" then
+            if v ~= nil and v.Type == "Fruits" and v.Quantity and v.Quantity >= 1 then
                 table.insert(ReturnText,string.split(v.Name,"-")[2])
             end
         end
     end
-	table.foreach(ReturnText, function(i,v) print(i,v, "Fruits Get") end)
     return ReturnText
 end
 
