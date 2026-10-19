@@ -1,3 +1,4 @@
+
 repeat task.wait() until game:GetService("Players").LocalPlayer
 repeat task.wait() until game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
 repeat task.wait() until (game.Players.LocalPlayer.Neutral == false) == true
@@ -19,7 +20,7 @@ local function refreshAllCache()
     local seen = {}
 
     for _, v in ipairs(items) do
-        local key = v.ItemId .. "_" .. tostr
+        local key = v.ItemId .. "_" ..  tostring(v.NetworkedUID)
         if not seen[key] then
             seen[key] = true
             if v.NetworkedUID then
