@@ -11,7 +11,37 @@ local ItemConfig = require(ReplicatedStorage.ItemConfig)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
+local function refreshAllCache()
+    local items = ItemReplicationService:GetItems()
+
+    local withUidIds, withUidUids = {}, {}
+    local withoutUidIds = {}
+    local seen = {}
+
+    for _, v in ipairs(items) do
+        local key = v.ItemId .. "_" .. tostr
+        if not seen[key] then
+            seen[key] = true
+            if v.NetworkedUID then
+                table.insert(withUidIds, v.ItemId)
+                table.insert(withUidUids, v.NetworkedUID)
+            else
+                table.insert(withoutUidIds, v.ItemId)
+            end
+        end
+    end
+
+    if #withUidIds > 0 then
+        ItemReplicationService:RefreshAsync(withUidIds, withUidUids)
+    end
+
+    if #withoutUidIds > 0 then
+        ItemReplicationService:RefreshAsync(withoutUidIds)
+    end
+end
+
 local function getInventory()
+	 refreshAllCache()
     local Items = {}
 
     for _, v in ipairs(ItemReplicationService:GetItems()) do
