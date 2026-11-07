@@ -251,12 +251,9 @@ function getType()
     end
 
     if GodHuman == 1 and SanguineArt ~= 1 then
-        local tool = LocalPlayer.Character:FindFirstChild("Godhuman") or LocalPlayer.Backpack:FindFirstChild("Godhuman")
-        if tool then
-            local level = tool:FindFirstChild("Level")
-            if level and level:IsA("IntValue") then
-                GodHumanLevel = level.Value
-            end
+        local itemSuperHuman = getInventory()["1162"]
+        if itemSuperHuman then
+            GodHumanLevel = itemSuperHuman.Mastery or 0 
         end
 
         table.insert(ReturnText, "GOD [" .. GodHumanLevel .. "]")
