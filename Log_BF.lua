@@ -224,6 +224,14 @@ function findItem(item)
     return false
 end
 
+function getMasterySuperhuman()
+    for i,v in pairs(getInventory()) do 
+        if v.Name == "Godhuman" then 
+            return v.Mastery
+        end
+    end
+    return 0
+end
 
 function getType()
     local ReturnText = {}
@@ -251,11 +259,7 @@ function getType()
     end
 
     if GodHuman == 1 and SanguineArt ~= 1 then
-        local itemSuperHuman = getInventory()["1162"]
-        if itemSuperHuman then
-            GodHumanLevel = itemSuperHuman.Mastery or 0 
-        end
-
+        GodHumanLevel = getMasterySuperhuman()
         table.insert(ReturnText, "GOD [" .. GodHumanLevel .. "]")
     end
 
